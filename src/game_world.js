@@ -6,7 +6,8 @@
         {},
         require("./constants.js"),
         require("./actor_stepper.js"),
-        require("./spike_ai.js")
+        require("./spike_ai.js"),
+        require("./enemy_ai.js")
       )
     : (root.WreckGame || {});
 
@@ -27,7 +28,9 @@
     getPillarFallPayload,
     Actor,
     ActorStepper,
-    SpikeAI
+    SpikeAI,
+    EnemyActor,
+    EnemyAI
   } = G;
 
   class GameWorld {
@@ -52,6 +55,8 @@
       this.mario = new Actor(true);
       this.spike = new Actor(false);
       this.spikeAI = new SpikeAI();
+      this.enemies = [];
+      this.enemyAI = typeof EnemyAI === "function" ? new EnemyAI() : null;
 
       if (config.tiles) {
         this.loadTiles(config.tiles);
@@ -74,6 +79,13 @@
 
       this.stepper.updateCR(this.mario, this);
       this.stepper.updateCR(this.spike, this);
+      if (Array.isArray(config.enemies) && typeof EnemyActor === "function") {
+        for (let i = 0; i < config.enemies.length; i++) {
+          const e = new EnemyActor(config.enemies[i]);
+          if (this.enemyAI) this.enemyAI.updateCR(e, this);
+          this.enemies.push(e);
+        }
+      }
     }
 
     wrapX(x) {
@@ -571,6 +583,9 @@
       }
       this.updateSpikeHammer();
       this.stepper.step(this.spike, this);
+      if (this.enemyAI && this.enemies.length > 0) {
+        this.enemyAI.updateAll(this);
+      }
 
       this.updateEffectsAndWaves();
       this.f += 1;
