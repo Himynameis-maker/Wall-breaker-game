@@ -146,36 +146,21 @@
       return false;
     }
 
-    checkLadderHoldHazard(slot, world, ladderRow) {
-      const t = world.getTile(ladderRow, slot.col);
-      if (isLadderTile(t)) return false;
-      if (isCrumblingLadderTile(t)) {
-        const info = world.getCrumblingInfo(ladderRow, slot.col);
-        const stage = info ? info.stage : (t & 0x07);
-        const sameSide = (info ? info.byMario : true) === slot.isMario;
-        if (!sameSide || stage <= 2) {
-          this.enterKnockdown(slot);
-          return true;
-        }
-        return false;
-      }
-      this.enterKnockdown(slot);
-      return true;
-    }
-
     checkHazardHit(slot, world) {
       if (slot.state === 10 || slot.state === 11 || slot.state === 15 || slot.state === 16) {
         return false;
       }
 
-      const isHoldingLadder = slot.state === 2 ||
-        slot.state === 6 ||
-        (slot.state === 3 && slot.kind !== "arrive" && slot.kind !== "arrive_top");
-      const checkRow = isHoldingLadder
-        ? Math.max(0, Math.min(world.rows - 1, Math.floor(slot.topY / 32)))
-        : (slot.state === 5
-          ? Math.max(0, Math.min(world.rows - 1, Math.floor((slot.y - 16) / 32)))
-          : slot.row);
+      // 原作 ROM $C7D6 + (State 2 のみ $C316) 準拠
+      let checkRow = slot.row;
+      if (slot.state === 2) {
+        const curT = world.getTile(slot.row, slot.col);
+        if (curT === TILE.HOLE_PILLAR_LAD || ((slot.y & 0x0f) !== 0 && (slot.y & 0x10) !== 0)) {
+          checkRow = Math.min(world.rows - 1, slot.row + 1);
+        }
+      } else if (slot.state === 5) {
+        checkRow = Math.max(0, Math.min(world.rows - 1, Math.floor((slot.y - 16) / 32)));
+      }
 
       if (world.explosions.length > 0) {
         for (let i = 0; i < world.explosions.length; i++) {
@@ -195,8 +180,9 @@
         }
       }
 
+      const checkTile = world.getTile(checkRow, slot.col);
+
       if (!(slot.flag & 2)) {
-        const checkTile = world.getTile(checkRow, slot.col);
         if (isDoorOpeningTile(checkTile)) {
           const attackerSide = (checkTile & 0x08) !== 0 ? 1 : 0;
           if (this.getActorSide(slot) !== attackerSide) {
@@ -214,35 +200,39 @@
         }
       }
 
-      if (world.crumblingLadders.size > 0 && !(slot.flag & 2)) {
-        const onFloorState = slot.state === 0 ||
-          slot.state === 1 ||
-          slot.state === 4 ||
-          slot.state === 8 ||
-          slot.state === 9 ||
-          (slot.state === 3 && (slot.kind === "arrive" || slot.kind === "arrive_top"));
+      if (world.crumblingLadders.size > 0 && slot.state !== 5) {
+        const isDangerLadder = (r, c) => {
+          const t = world.getTile(r, c);
+          if (!isCrumblingLadderTile(t)) return false;
+          const info = world.getCrumblingInfo(r, c);
+          const stage = info ? info.stage : (t & 0x07);
+          return stage <= 2;
+        };
 
-        if (onFloorState) {
-          const t = world.getTile(slot.row, slot.col);
-          if (isCrumblingLadderTile(t)) {
-            const info = world.getCrumblingInfo(slot.row, slot.col);
-            const stage = info ? info.stage : (t & 0x07);
-            const sameSide = (info ? info.byMario : true) === slot.isMario;
-            if (!sameSide) {
-              if (stage >= 2) {
-                this.enterKnockdown(slot);
-                return true;
-              }
-            } else if (stage <= 2 && slot.row < world.rows - 1 && info && info.hasBelowSame) {
-              const belowTile = world.getTile(slot.row + 1, slot.col);
-              const belowInfo = world.getCrumblingInfo(slot.row + 1, slot.col);
-              const belowFalling = isHoleTile(belowTile) ||
-                (belowInfo ? belowInfo.stage <= 2 : (isCrumblingLadderTile(belowTile) && (belowTile & 0x07) <= 2));
-              if (belowFalling) {
-                this.enterKnockdown(slot);
-                return true;
-              }
-            }
+        // $C812〜$C823: 自分と1つ下の両方が $51/$52 なら無差別落下
+        if (isDangerLadder(checkRow, slot.col)) {
+          if (checkRow < world.rows - 1 && isDangerLadder(checkRow + 1, slot.col)) {
+            this.enterKnockdown(slot);
+            return true;
+          }
+        }
+
+        // $C825〜$C835: 穴 ($09..$0B) かつ 1つ下が $51/$52 なら無差別落下
+        if (isHoleTile(checkTile) && checkRow < world.rows - 1) {
+          if (isDangerLadder(checkRow + 1, slot.col)) {
+            this.enterKnockdown(slot);
+            return true;
+          }
+        }
+
+        // $C843〜$C86D: 壊れかけはしご (stage >= 2) に別陣営が触れた場合ヒット
+        if (!(slot.flag & 2) && isCrumblingLadderTile(checkTile)) {
+          const info = world.getCrumblingInfo(checkRow, slot.col);
+          const stage = info ? info.stage : (checkTile & 0x07);
+          const attackerSide = (info ? info.byMario : true) ? 0 : 1;
+          if (stage >= 2 && this.getActorSide(slot) !== attackerSide) {
+            this.enterKnockdown(slot);
+            return true;
           }
         }
       }
@@ -424,7 +414,12 @@
 
     finishLadderSegment(slot, world, arriveKind) {
       this.updateCR(slot, world);
-      if (this.isContinuousLadderSegment(slot.row, slot.col, world)) {
+      const curTile = world.getTile(slot.row, slot.col);
+      const belowTile = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, slot.col) : TILE.EMPTY;
+      const isContAtFinish = slot.row < world.rows - 1 &&
+        isLadderTile(curTile) &&
+        (belowTile === curTile || belowTile === TILE.HOLE_PILLAR_LAD);
+      if (isContAtFinish) {
         if (slot.row === 0) {
           slot.state = 0;
           slot.kind = null;
@@ -572,10 +567,6 @@
           slot.hammerHitDone = false;
         }
       } else if (slot.state === 3) {
-        if (slot.kind !== "arrive" && slot.kind !== "arrive_top") {
-          const ladderRow = Math.max(0, Math.min(world.rows - 1, Math.floor(slot.topY / 32)));
-          if (this.checkLadderHoldHazard(slot, world, ladderRow)) return;
-        }
         slot.n += 1;
         let limit = 6;
         if (slot.kind === "arrive_top") {
@@ -638,8 +629,6 @@
 
         slot.y = slot.topY;
       } else if (slot.state === 6) {
-        const ladderRow = Math.max(0, Math.min(world.rows - 1, Math.floor(slot.topY / 32)));
-        if (this.checkLadderHoldHazard(slot, world, ladderRow)) return;
         if (b & (LEFT | RIGHT)) {
           slot.dir = b & (LEFT | RIGHT);
           slot.facing = slot.dir;
@@ -683,8 +672,6 @@
         }
       } else if (slot.state === 2) {
         slot.flag &= ~0x02;
-        const ladderRow = Math.max(0, Math.min(world.rows - 1, Math.floor(slot.topY / 32)));
-        if (this.checkLadderHoldHazard(slot, world, ladderRow)) return;
         const curTile = world.getTile(slot.row, slot.col);
         if (this.trySideTransition(slot, b, world)) return;
         if (b & (UP | DOWN)) {
