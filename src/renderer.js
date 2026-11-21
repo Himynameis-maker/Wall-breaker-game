@@ -620,6 +620,26 @@
         }
       }
 
+      if (world.marioHitEnemy) {
+        const m = world.mario;
+        const f = world.f || 0;
+        const blink = ((f >> 1) & 1) === 0;
+        const boxW = 24;
+        const boxH = 11;
+        const hx = Math.max(1, Math.min(w - boxW - 1, Math.round(m.x - 4)));
+        const hy = Math.max(camOffset + 2, Math.round(m.y - 40));
+        ctx.fillStyle = blink ? "#d82020" : "#181820";
+        ctx.fillRect(hx, hy, boxW, boxH);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hx + 0.5, hy + 0.5, boxW - 1, boxH - 1);
+        ctx.fillStyle = blink ? "#ffffff" : "#ffec48";
+        ctx.font = "bold 9px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("HIT", hx + boxW / 2, hy + boxH / 2 + 0.5);
+      }
+
       ctx.restore();
     }
 
@@ -818,6 +838,7 @@
       }
       return 0;
     }
+
     drawActor(slot, sprites, worldWidth, world) {
       const drawY = slot.y - 26 + this.getLadderVisualOffsetY(slot);
       this.drawActorAt(slot, sprites, slot.x, drawY, world);
@@ -829,8 +850,44 @@
       }
     }
 
- drawEnemyAt(enemy, baseX, drawY, world) {
+    drawEnemyAt(enemy, baseX, drawY, world) {
       const ctx = this.ctx;
+      if (enemy.state === 15 || enemy.state === 16) {
+        const f = world ? world.f : 0;
+        const phase = (f >> 2) & 1;
+        const lidY = drawY - 4;
+        const headY = enemy.state === 15 ? (lidY + 4) : (lidY + (phase ? -3 : -1));
+
+        ctx.fillStyle = "#ffe060";
+        ctx.fillRect(baseX + 4, headY, 2, 2);
+        ctx.fillRect(baseX + 10, headY, 2, 2);
+        ctx.fillStyle = "#184c5c";
+        ctx.fillRect(baseX + 3, headY + 2, 10, 6);
+        ctx.fillStyle = "#36b8c8";
+        ctx.fillRect(baseX + 4, headY + 3, 8, 5);
+        ctx.fillStyle = "#7cf0f8";
+        ctx.fillRect(baseX + 5, headY + 3, 6, 1);
+
+        if (enemy.state === 16) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(baseX + 5, headY + 5, 2, 2);
+          ctx.fillRect(baseX + 9, headY + 5, 2, 2);
+          ctx.fillStyle = "#e03030";
+          ctx.fillRect(baseX + 5, headY + 6, 1, 1);
+          ctx.fillRect(baseX + 10, headY + 6, 1, 1);
+        }
+
+        ctx.fillStyle = "#2890a0";
+        ctx.fillRect(baseX + 1, lidY + (phase ? 0 : 2), 2, 3);
+        ctx.fillRect(baseX + 13, lidY + (phase ? 2 : 0), 2, 3);
+
+        if (enemy.state === 16) {
+          ctx.fillStyle = phase ? "#ffec48" : "#ffffff";
+          ctx.fillRect(baseX + 7, lidY - 7, 2, 2);
+        }
+        return;
+      }
+
       const isLeft = ((enemy.facing || enemy.dir) & 2) !== 0;
       const stepPhase = (enemy.animCount >> 2) & 1;
       const isFrontPause =
@@ -920,6 +977,7 @@
         ctx.fillRect(sx2, drawY - 1, 2, 2);
       }
     }
+
     drawEnemy(enemy, worldWidth, world) {
       const drawY = enemy.y - 22;
       this.drawEnemyAt(enemy, enemy.x, drawY, world);
@@ -934,4 +992,3 @@
 
   root.WreckRender = { Renderer };
 })(typeof globalThis !== "undefined" ? globalThis : window);
-    
