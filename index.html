@@ -301,12 +301,12 @@
         const doorOpen = world.doors ? world.doors.filter(d => d.state >= 2).length : 0;
         hudEl.textContent =
           "MAP:" + world.cols + "x" + world.rows + " F:" + world.f + " TGT:" + rem + " DR:" + doorOpen + "/" + doorTotal + " IN:" + dirLabel(inp) + (paused ? " [PAUSE]" : "") + "\n" +
-          "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + "\n" +
+          "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + (world.marioHitEnemy ? " [HIT!]" : "") + "\n" +
           "Spike st:" + s.state + " X:" + s.x + " Y:" + s.y + " (" + s.row + "," + s.col + ") f:" + (s.facing & 2 ? "L" : "R") + actorTag(s) + "\n" +
           "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer;
         if (world.enemies && world.enemies.length > 0) {
           hudEl.textContent += "\n" + world.enemies.map((e, idx) =>
-            "E" + idx + " st:" + e.state + " X:" + e.x + " Y:" + e.y + " (" + e.row + "," + e.col + ") f:" + (e.facing & 2 ? "L" : "R")
+            "E" + idx + " st:" + e.state + " X:" + e.x + " Y:" + e.y + " (" + e.row + "," + e.col + ") f:" + (e.facing & 2 ? "L" : "R") + actorTag(e)
           ).join(" | ");
         }
       }
