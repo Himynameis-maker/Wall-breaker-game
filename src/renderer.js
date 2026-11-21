@@ -578,6 +578,11 @@
       }
 
       this.drawActor(world.spike, this.spikeSprites, w, world);
+      if (world.enemies) {
+        for (const enemy of world.enemies) {
+          this.drawEnemy(enemy, w, world);
+        }
+      }
       this.drawActor(world.mario, this.marioSprites, w, world);
 
       // 爆風・崩落煙エフェクト
@@ -813,7 +818,6 @@
       }
       return 0;
     }
-
     drawActor(slot, sprites, worldWidth, world) {
       const drawY = slot.y - 26 + this.getLadderVisualOffsetY(slot);
       this.drawActorAt(slot, sprites, slot.x, drawY, world);
@@ -824,7 +828,110 @@
         this.drawActorAt(slot, sprites, slot.x + worldWidth, drawY, world);
       }
     }
+
+ drawEnemyAt(enemy, baseX, drawY, world) {
+      const ctx = this.ctx;
+      const isLeft = ((enemy.facing || enemy.dir) & 2) !== 0;
+      const stepPhase = (enemy.animCount >> 2) & 1;
+      const isFrontPause =
+        (enemy.state === 2 && (enemy.ladderStage === 0 || enemy.ladderStage === 9)) ||
+        (enemy.state === 0 && enemy.isLadderPose);
+      const isClimbMove = enemy.state === 2 && !isFrontPause;
+      const climbOdd = (enemy.ladderStage & 1) !== 0;
+      const f = world ? world.f : 0;
+      const drawX = enemy.state === 4 ? baseX + (((f >> 1) & 1) ? 1 : -1) : baseX;
+
+      ctx.save();
+      if (enemy.state === 10) {
+        ctx.translate(drawX + 8, drawY + 11);
+        ctx.scale(1, -1);
+        ctx.translate(-(drawX + 8), -(drawY + 11));
+      }
+
+      // 二本足の仮ドット描画（シアン系モンスター）
+      ctx.fillStyle = "#184c5c";
+      ctx.fillRect(drawX + 3, drawY + 3, 10, 12);
+      ctx.fillStyle = "#36b8c8";
+      ctx.fillRect(drawX + 4, drawY + 4, 8, 10);
+      ctx.fillStyle = "#7cf0f8";
+      ctx.fillRect(drawX + 5, drawY + 5, 6, 2);
+
+      // 頭の角・スパナ風突起
+      ctx.fillStyle = "#ffe060";
+      ctx.fillRect(drawX + 4, drawY + 1, 2, 2);
+      ctx.fillRect(drawX + 10, drawY + 1, 2, 2);
+
+      // 目（はしご踏切・昇降中は正面向き2つ目）
+      if (isFrontPause || isClimbMove) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(drawX + 5, drawY + 7, 2, 3);
+        ctx.fillRect(drawX + 9, drawY + 7, 2, 3);
+        ctx.fillStyle = "#e03030";
+        ctx.fillRect(drawX + 5, drawY + 8, 1, 2);
+        ctx.fillRect(drawX + 10, drawY + 8, 1, 2);
+      } else {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(isLeft ? drawX + 4 : drawX + 9, drawY + 7, 3, 3);
+        ctx.fillStyle = "#e03030";
+        ctx.fillRect(isLeft ? drawX + 4 : drawX + 11, drawY + 8, 1, 2);
+      }
+
+      // 腕（踏切時は両手ではしごを掴む、昇降中は交互、歩行は体側）
+      ctx.fillStyle = "#2890a0";
+      if (isFrontPause) {
+        ctx.fillRect(drawX + 1, drawY + 6, 2, 5);
+        ctx.fillRect(drawX + 13, drawY + 6, 2, 5);
+      } else if (isClimbMove) {
+        ctx.fillRect(drawX + 1, drawY + (climbOdd ? 4 : 9), 2, 4);
+        ctx.fillRect(drawX + 13, drawY + (climbOdd ? 9 : 4), 2, 4);
+      } else {
+        ctx.fillRect(drawX + 2, drawY + 9, 2, 4);
+        ctx.fillRect(drawX + 12, drawY + 9, 2, 4);
+      }
+
+      // 二本足（踏切時は両足で踏ん張り、昇降中は交互に掛け替え）
+      ctx.fillStyle = "#184c5c";
+      if (enemy.state === 5) {
+        ctx.fillRect(drawX + 2, drawY + 15, 4, 6);
+        ctx.fillRect(drawX + 10, drawY + 15, 4, 6);
+      } else if (isFrontPause) {
+        ctx.fillRect(drawX + 3, drawY + 15, 3, 7);
+        ctx.fillRect(drawX + 10, drawY + 15, 3, 7);
+      } else if (isClimbMove) {
+        ctx.fillRect(drawX + 4, drawY + 15, 3, climbOdd ? 5 : 7);
+        ctx.fillRect(drawX + 9, drawY + 15, 3, climbOdd ? 7 : 5);
+      } else if (enemy.state === 1) {
+        ctx.fillRect(drawX + 4, drawY + 15, 3, stepPhase ? 7 : 5);
+        ctx.fillRect(drawX + 9, drawY + 15, 3, stepPhase ? 5 : 7);
+      } else {
+        ctx.fillRect(drawX + 4, drawY + 15, 3, 7);
+        ctx.fillRect(drawX + 9, drawY + 15, 3, 7);
+      }
+
+      ctx.restore();
+
+      // State 4 スタン硬直中の星エフェクト
+      if (enemy.state === 4) {
+        const sx1 = drawX + 7 + Math.round(Math.cos(f * 0.35) * 5);
+        const sx2 = drawX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
+        ctx.fillStyle = "#ffec48";
+        ctx.fillRect(sx1, drawY - 3, 2, 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(sx2, drawY - 1, 2, 2);
+      }
+    }
+    drawEnemy(enemy, worldWidth, world) {
+      const drawY = enemy.y - 22;
+      this.drawEnemyAt(enemy, enemy.x, drawY, world);
+      if (enemy.x > worldWidth - 16) {
+        this.drawEnemyAt(enemy, enemy.x - worldWidth, drawY, world);
+      }
+      if (enemy.x < 16) {
+        this.drawEnemyAt(enemy, enemy.x + worldWidth, drawY, world);
+      }
+    }
   }
 
   root.WreckRender = { Renderer };
 })(typeof globalThis !== "undefined" ? globalThis : window);
+    
