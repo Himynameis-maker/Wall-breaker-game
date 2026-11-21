@@ -578,6 +578,11 @@
       }
 
       this.drawActor(world.spike, this.spikeSprites, w, world);
+      if (world.enemies) {
+        for (const enemy of world.enemies) {
+          this.drawEnemy(enemy, w, world);
+        }
+      }
       this.drawActor(world.mario, this.marioSprites, w, world);
 
       // 爆風・崩落煙エフェクト
@@ -819,7 +824,11 @@
       this.drawActorAt(slot, sprites, slot.x, drawY, world);
       if (slot.x > worldWidth - 16) {
         this.drawActorAt(slot, sprites, slot.x - worldWidth, drawY, world);
+      if (slot.x < 16) {
+        this.drawActorAt(slot, sprites, slot.x + worldWidth, drawY, world);
       }
+    }
+    }
       if (slot.x < 16) {
         this.drawActorAt(slot, sprites, slot.x + worldWidth, drawY, world);
       }
