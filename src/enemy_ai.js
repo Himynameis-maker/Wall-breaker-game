@@ -39,7 +39,7 @@
       this.isEnemy = true;
       this.enemyType = cfg.enemyType || "spanagon";
       this.isBack = !!cfg.isBack;
-      this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 4:ダウン後硬直/加速, 5:穴落ち, 10:ダウン落下
+      this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 4:ダウン後硬直/加速, 5:穴落ち, 10:ダウン落下, 15:ドラム缶捕獲待機, 16:ドラム缶閉じ込め
       this.x = cfg.x != null ? cfg.x : 0;
       this.y = cfg.y != null ? cfg.y : 64;
       this.dir = cfg.dir != null ? cfg.dir : LEFT;
@@ -119,6 +119,38 @@
       slot.flag &= ~0x02;
       slot.isLadderPose = false;
       slot.ladderStage = 0;
+    }
+
+    // $C8BB 相当: 落下中ドラム缶 ($0D) による閉じ込め捕獲＆隣セル押し戻し
+    checkDrumTrap(slot, world) {
+      if (slot.state !== 0 && slot.state !== 1 && slot.state !== 2 && slot.state !== 4) {
+        return false;
+      }
+      const curTile = world.getTile(slot.row, slot.col);
+      if (curTile === TILE.DRUM_FALLING) {
+        if (slot.state === 2) {
+          slot.prom = 0x10;
+          return false;
+        }
+        slot.state = 15;
+        slot.n = 0;
+        slot.prom = 0;
+        slot.stopTimer = 0;
+        slot.isLadderPose = false;
+        slot.ladderStage = 0;
+        this.snapX(slot, world);
+        this.snapY(slot);
+        this.updateCR(slot, world);
+        return true;
+      }
+      if ((slot.x & 0x0f) !== 0) {
+        const sideCol = world.wrapCol(slot.col + ((slot.x & 0x0f) < 8 ? 1 : -1));
+        if (world.getTile(slot.row, sideCol) === TILE.DRUM_FALLING) {
+          this.snapX(slot, world);
+          this.updateCR(slot, world);
+        }
+      }
+      return false;
     }
 
     // ROM $C316 + $C7F4 準拠: State 1 / State 2 用の足元・崩壊・爆風被弾判定
@@ -443,6 +475,7 @@
     }
 
     stepState0(slot, world) {
+      if (this.checkDrumTrap(slot, world)) return;
       this.thinkDirection(slot, world);
       if ((slot.cmd & (RIGHT | LEFT)) === 0) {
         if (this.tryEnemyLadder(slot, world)) return;
@@ -452,6 +485,7 @@
 
     stepState1(slot, world) {
       if (this.checkEnemyHazardHit(slot, world)) return;
+      if (this.checkDrumTrap(slot, world)) return;
       if (!this.rotateSpeedMask(slot)) return;
       slot.isLadderPose = false;
       slot.prevCmd = slot.cmd;
@@ -479,6 +513,7 @@
 
     stepState2(slot, world) {
       if (this.checkEnemyHazardHit(slot, world)) return;
+      if (this.checkDrumTrap(slot, world)) return;
       if (!this.rotateSpeedMask(slot)) return;
 
       // $CE8D 相当: 下り中に昇降中のはしごが壊れかけ/消滅したら上へ引き返す
@@ -539,6 +574,7 @@
 
     // $D0D5 相当: ダウン着地後 96F 硬直 → speedMask を1段階加速して歩行再開
     stepState4(slot, world) {
+      if (this.checkDrumTrap(slot, world)) return;
       slot.stopTimer -= 1;
       if (slot.stopTimer > 0) return;
 
@@ -645,6 +681,15 @@
 
     stepEnemy(slot, world) {
       this.updateCR(slot, world);
+      if (slot.state === 15) {
+        if (world.getTile(slot.row, slot.col) === TILE.DRUM) {
+          slot.state = 16;
+        }
+        return;
+      }
+      if (slot.state === 16) {
+        return;
+      }
       if (slot.state === 0) {
         this.stepState0(slot, world);
       } else if (slot.state === 1) {
