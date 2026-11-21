@@ -152,6 +152,7 @@
   <div class="topbar">
     <div class="btn-row">
       <select id="stageSelect" aria-label="ステージ選択">
+        <option value="enemyDemo">スパナゴン歩行テスト（16×8）</option>
         <option value="doorDemo">ドア＆爆弾連動テスト（16×8）</option>
         <option value="pillarDemo">鉄柱＆落下テスト（16×8）</option>
         <option value="hammerDemo">ハンマー＆破壊テスト（16×8）</option>
@@ -194,6 +195,7 @@
   <script src="./src/constants.js"></script>
   <script src="./src/actor_stepper.js"></script>
   <script src="./src/spike_ai.js"></script>
+  <script src="./src/enemy_ai.js"></script>
   <script src="./src/game_world.js"></script>
   <script src="./data/sprites.js"></script>
   <script src="./src/renderer.js"></script>
@@ -249,7 +251,8 @@
           rows: cfg.rows,
           tiles: cfg.tiles,
           mario: cfg.mario,
-          spike: cfg.spike
+          spike: cfg.spike,
+          enemies: cfg.enemies
         });
         applyZoomMode();
         renderer.resetCamera(world);
@@ -301,6 +304,11 @@
           "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + "\n" +
           "Spike st:" + s.state + " X:" + s.x + " Y:" + s.y + " (" + s.row + "," + s.col + ") f:" + (s.facing & 2 ? "L" : "R") + actorTag(s) + "\n" +
           "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer;
+        if (world.enemies && world.enemies.length > 0) {
+          hudEl.textContent += "\n" + world.enemies.map((e, idx) =>
+            "E" + idx + " st:" + e.state + " X:" + e.x + " Y:" + e.y + " (" + e.row + "," + e.col + ") f:" + (e.facing & 2 ? "L" : "R")
+          ).join(" | ");
+        }
       }
 
       // 擬似スティック（4方向優先・デッドゾーン付き）
