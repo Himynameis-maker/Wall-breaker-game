@@ -10,12 +10,17 @@
     LEFT,
     DOWN,
     UP,
+    COLLAPSE_STAGE_FRAMES,
+    COLLAPSE_HIT_FRAMES,
     TILE,
     isLadderTile,
+    isCrumblingLadderTile,
+    isDoorOpeningTile,
     isHoleTile,
     isFallHoleTile,
     isSolidDrum,
-    FALL_TABLE
+    FALL_TABLE,
+    KNOCKDOWN_DY
   } = G;
 
   // スパナゴン統一初期速度（0xAA = 8Fのうち4回移動 = 0.5px/F）
@@ -25,13 +30,16 @@
   const ENEMY_LADDER_THRESH = [48, 46, 39, 34, 28, 23, 18, 12, 7, 2];
   const ENEMY_LADDER_RELY = [0, 3, 7, 11, 15, 19, 23, 27, 31, 32];
 
+  // State 4 加速テーブル（ROM $D10A 準拠: speedMask の 1bit数 1..8 に対応）
+  const ENEMY_ACCEL_TABLE = [0x11, 0x25, 0x55, 0xb5, 0xee, 0xfe, 0xff, 0xff];
+
   class EnemyActor {
     constructor(cfg = {}) {
       this.isMario = false;
       this.isEnemy = true;
       this.enemyType = cfg.enemyType || "spanagon";
       this.isBack = !!cfg.isBack;
-      this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 5:穴落ち
+      this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 4:ダウン後硬直/加速, 5:穴落ち, 10:ダウン落下
       this.x = cfg.x != null ? cfg.x : 0;
       this.y = cfg.y != null ? cfg.y : 64;
       this.dir = cfg.dir != null ? cfg.dir : LEFT;
@@ -45,6 +53,10 @@
       this.col = 0;
       this.flag = 0; // bit1 = ドラム缶頭上
       this.prom = 0;
+      this.n = 0;
+      this.stopTimer = 0;
+      this.ladderStage = 0;
+      this.isLadderPose = false;
       this.animCount = 0;
     }
   }
@@ -81,6 +93,134 @@
       }
     }
 
+    countBits8(val) {
+      let bits = 0;
+      let v = val & 0xff;
+      while (v !== 0) {
+        bits += v & 1;
+        v >>>= 1;
+      }
+      return bits;
+    }
+
+    calcLadderStage(prom) {
+      let idx = 9;
+      while (idx > 0 && prom >= ENEMY_LADDER_THRESH[idx]) {
+        idx -= 1;
+      }
+      return idx;
+    }
+
+    enterKnockdown(slot) {
+      slot.state = 10;
+      slot.n = 0;
+      slot.prom = 0;
+      slot.stopTimer = 0;
+      slot.flag &= ~0x02;
+      slot.isLadderPose = false;
+      slot.ladderStage = 0;
+    }
+
+    // ROM $C316 + $C7F4 準拠: State 1 / State 2 用の足元・崩壊・爆風被弾判定
+    checkEnemyHazardHit(slot, world) {
+      if (slot.state !== 1 && slot.state !== 2) {
+        return false;
+      }
+
+      // $C316 相当: State 2 で下半分 (y が topY+16..31) または $0B なら下の段を見る
+      let checkRow = slot.row;
+      if (slot.state === 2) {
+        const curT = world.getTile(slot.row, slot.col);
+        if (curT === TILE.HOLE_PILLAR_LAD || ((slot.y & 0x0f) !== 0 && (slot.y & 0x10) !== 0)) {
+          checkRow = Math.min(world.rows - 1, slot.row + 1);
+        }
+      }
+
+      const enemySide = slot.isBack ? 1 : 0;
+
+      if (world.explosions && world.explosions.length > 0) {
+        for (let i = 0; i < world.explosions.length; i++) {
+          const ex = world.explosions[i];
+          if (ex.col !== slot.col || ex.row !== checkRow) continue;
+          if (ex.kind === "bomb") {
+            const attackerSide = ex.byMario ? 0 : 1;
+            if (ex.age >= 21 || enemySide !== attackerSide) {
+              this.enterKnockdown(slot);
+              return true;
+            }
+          } else if (ex.kind === "wall") {
+            const attackerSide = ex.byMario ? 0 : 1;
+            if (ex.age < COLLAPSE_HIT_FRAMES) {
+              if (ex.age >= COLLAPSE_HIT_FRAMES - COLLAPSE_STAGE_FRAMES || enemySide !== attackerSide) {
+                this.enterKnockdown(slot);
+                return true;
+              }
+            }
+          }
+        }
+      }
+
+      const tile = world.getTile(checkRow, slot.col);
+
+      const isDangerLadder = (r, c) => {
+        const t = world.getTile(r, c);
+        if (!isCrumblingLadderTile(t)) return false;
+        const info = world.getCrumblingInfo ? world.getCrumblingInfo(r, c) : null;
+        const stage = info ? info.stage : (t & 0x07);
+        return stage <= 2;
+      };
+
+      // $C811〜$C822: 自分と1つ下の両方が壊れかけ最終段階 ($51/$52) なら無差別落下
+      if (isDangerLadder(checkRow, slot.col)) {
+        if (checkRow < world.rows - 1 && isDangerLadder(checkRow + 1, slot.col)) {
+          this.enterKnockdown(slot);
+          return true;
+        }
+      }
+
+      // $C824〜$C834: 穴 ($09..$0B) かつ 1つ下が $51/$52 なら無差別落下
+      if (isHoleTile(tile) && checkRow < world.rows - 1) {
+        if (isDangerLadder(checkRow + 1, slot.col)) {
+          this.enterKnockdown(slot);
+          return true;
+        }
+      }
+
+      if (!(slot.flag & 2)) {
+        if (isDoorOpeningTile(tile)) {
+          const attackerSide = (tile & 0x08) !== 0 ? 1 : 0;
+          if (enemySide !== attackerSide) {
+            this.enterKnockdown(slot);
+            return true;
+          }
+        }
+
+        if (world.pillarBreaks && world.pillarBreaks.size > 0) {
+          const pInfo = world.getPillarBreakInfo ? world.getPillarBreakInfo(checkRow, slot.col) : null;
+          if (pInfo && pInfo.stage >= 2) {
+            const attackerSide = pInfo.byMario ? 0 : 1;
+            if (enemySide !== attackerSide) {
+              this.enterKnockdown(slot);
+              return true;
+            }
+          }
+        }
+
+        if (isCrumblingLadderTile(tile)) {
+          const info = world.getCrumblingInfo ? world.getCrumblingInfo(checkRow, slot.col) : null;
+          const stage = info ? info.stage : (tile & 0x07);
+          const byMario = info ? info.byMario : true;
+          const attackerSide = byMario ? 0 : 1;
+          if (stage >= 2 && enemySide !== attackerSide) {
+            this.enterKnockdown(slot);
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
     // $CBAE 相当: マリオとの段差・最寄りはしご・ドラム缶挟みから進行方向を決定
     thinkDirection(slot, world) {
       const myRow = slot.row;
@@ -91,11 +231,9 @@
       let targetCol = -1;
 
       if (myRow === marioRow) {
-        // 同じ段: マリオのいる方向へ
         slot.cmd = marioCol < myCol ? LEFT : RIGHT;
         targetCol = marioCol;
       } else {
-        // 違う段: 上下を合わせるため最寄りはしごを左から探索（同距離は左優先）
         const goingUp = myRow > marioRow;
         const vertBits = goingUp ? UP : DOWN;
         const scanRow = goingUp ? myRow : (myRow + 1);
@@ -117,7 +255,6 @@
 
         let horizBits = 0;
         if (bestCol < 0) {
-          // その段にはしごが無い場合: 原作同様に基本は左（col 0基準）を目指し、左にドラム缶があれば後続処理で反転する
           horizBits = (myCol === 0 && (slot.x & 0x0f) === 0) ? (slot.facing || LEFT) : LEFT;
           targetCol = 0;
         } else {
@@ -187,11 +324,12 @@
         return;
       }
 
-      // ドラム缶頭上歩行時 ($CB8F): 隣にそのまま乗れる連続はしごか降りられる穴が無ければ反転
+      // ドラム缶頭上歩行時 ($CB8F〜$CBAD): 隣が穴($09..$0B)か「下の段が空($00)のはしご」以外は反転
+      slot.prom = 0x2e;
       const nextTile = world.getTile(slot.row, nextCol);
       if (nextTile === TILE.LADDER || nextTile === TILE.BREAK_LADDER) {
         const nextBelow = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, nextCol) : TILE.EMPTY;
-        if (nextTile === nextBelow) return;
+        if (nextBelow === TILE.EMPTY) return;
         this.reverseHoriz(slot);
         return;
       }
@@ -218,7 +356,7 @@
 
       if (avail !== 3) {
         const wantVert = slot.cmd & (UP | DOWN);
-        const availVert = avail << 2; // 1->4(DOWN), 2->8(UP)
+        const availVert = avail << 2;
         if (wantVert !== availVert) {
           slot.avail = 0;
           return false;
@@ -251,6 +389,8 @@
       }
       slot.state = 2;
       slot.dir = vert;
+      slot.ladderStage = 0;
+      slot.isLadderPose = true;
       return true;
     }
 
@@ -264,9 +404,10 @@
       }
       if (((slot.x + 3) & 0x0f) >= 6) return false;
 
-      slot.prom = 0x12; // 敵用落下速度テーブル開始位置
+      slot.prom = 0x12;
       slot.topY = slot.y;
       slot.state = 5;
+      slot.isLadderPose = false;
       return true;
     }
 
@@ -276,7 +417,6 @@
       }
       let horiz = slot.cmd & (RIGHT | LEFT);
       if (horiz === 0) {
-        // 棒立ち防止の安全フォールバック
         if (slot.state === 0) {
           horiz = slot.facing || LEFT;
           slot.cmd = (slot.cmd & ~(RIGHT | LEFT)) | horiz;
@@ -296,6 +436,7 @@
       slot.x = world.wrapX(slot.x + (afterHoriz === LEFT ? -1 : 1));
       slot.prevCmd = slot.cmd;
       slot.state = 1;
+      slot.isLadderPose = false;
       slot.animCount = (slot.animCount + 1) & 0xff;
       this.updateCR(slot, world);
       return true;
@@ -310,7 +451,9 @@
     }
 
     stepState1(slot, world) {
+      if (this.checkEnemyHazardHit(slot, world)) return;
       if (!this.rotateSpeedMask(slot)) return;
+      slot.isLadderPose = false;
       slot.prevCmd = slot.cmd;
       this.checkDrumBlock(slot, world);
       if (this.tryEnemyLadder(slot, world)) return;
@@ -335,6 +478,7 @@
     }
 
     stepState2(slot, world) {
+      if (this.checkEnemyHazardHit(slot, world)) return;
       if (!this.rotateSpeedMask(slot)) return;
 
       // $CE8D 相当: 下り中に昇降中のはしごが壊れかけ/消滅したら上へ引き返す
@@ -350,11 +494,27 @@
       const isDown = (slot.cmd & DOWN) !== 0;
       slot.prom += isDown ? -1 : 1;
 
+      // $CDB9 相当: 上り途中 (prom == 0x22) で上段がドラム缶か穴なら下へ引き返す
+      if (slot.prom === 0x22) {
+        this.updateCR(slot, world);
+        const upTile = world.getTile(slot.row, slot.col);
+        if (upTile === TILE.DRUM || isHoleTile(upTile)) {
+          slot.cmd ^= (UP | DOWN);
+          if (slot.cmd & DOWN) {
+            slot.dir = DOWN;
+          } else if (slot.cmd & UP) {
+            slot.dir = UP;
+          }
+        }
+      }
+
       if (slot.prom <= 0) {
         slot.y = slot.topY + 32;
         slot.prom = 0;
         slot.state = 0;
         slot.avail = 0;
+        slot.ladderStage = 9;
+        slot.isLadderPose = true;
         this.updateCR(slot, world);
         return;
       }
@@ -363,21 +523,36 @@
         slot.prom = 0;
         slot.state = 0;
         slot.avail = 0;
+        slot.ladderStage = 0;
+        slot.isLadderPose = true;
         this.updateCR(slot, world);
         return;
       }
 
-      let idx = 9;
-      while (idx > 0 && slot.prom >= ENEMY_LADDER_THRESH[idx]) {
-        idx -= 1;
-      }
+      const idx = this.calcLadderStage(slot.prom);
+      slot.ladderStage = idx;
+      slot.isLadderPose = true;
       slot.y = slot.topY + ENEMY_LADDER_RELY[idx];
       slot.animCount = (slot.animCount + 1) & 0xff;
       this.updateCR(slot, world);
     }
 
+    // $D0D5 相当: ダウン着地後 96F 硬直 → speedMask を1段階加速して歩行再開
+    stepState4(slot, world) {
+      slot.stopTimer -= 1;
+      if (slot.stopTimer > 0) return;
+
+      slot.stopTimer = 0;
+      const bitCount = this.countBits8(slot.speedMask);
+      const tblIdx = Math.max(0, Math.min(7, bitCount - 1));
+      slot.speedMask = ENEMY_ACCEL_TABLE[tblIdx];
+      slot.state = 0;
+      this.resumeWalkFromIdle(slot, world, true);
+    }
+
     stepState5(slot, world) {
       this.snapX(slot, world);
+      slot.isLadderPose = false;
       slot.prom += 1;
       let spd = FALL_TABLE[slot.prom];
       if (spd < 0) {
@@ -428,6 +603,46 @@
       }
     }
 
+    // $C0F6 相当: ダウン落下 → 最下段（または最下段ドラム缶天板）で State 4 (96F硬直) へ
+    stepState10(slot, world) {
+      const dy = slot.n < KNOCKDOWN_DY.length ? KNOCKDOWN_DY[slot.n] : 2;
+      slot.n += 1;
+      slot.y += dy;
+
+      const maxFloorY = world.rows * 32;
+      const bottomRow = world.rows - 1;
+      const bottomDrumY = bottomRow * 32 + 0x0b;
+      const canCheckLanding = slot.n >= KNOCKDOWN_DY.length || dy > 0;
+
+      if (canCheckLanding &&
+          slot.y >= bottomDrumY &&
+          isSolidDrum(world.getTile(bottomRow, slot.col))) {
+        slot.y = bottomDrumY;
+        slot.topY = bottomDrumY;
+        slot.flag |= 2;
+        slot.prom = 0;
+        slot.n = 0;
+        slot.state = 4;
+        slot.stopTimer = 0x60;
+        this.updateCR(slot, world);
+        return;
+      }
+
+      if (canCheckLanding && slot.y >= maxFloorY) {
+        slot.y = maxFloorY;
+        slot.topY = maxFloorY;
+        slot.flag &= ~0x02;
+        slot.prom = 0;
+        slot.n = 0;
+        slot.state = 4;
+        slot.stopTimer = 0x60;
+        this.updateCR(slot, world);
+        return;
+      }
+
+      slot.topY = slot.y;
+    }
+
     stepEnemy(slot, world) {
       this.updateCR(slot, world);
       if (slot.state === 0) {
@@ -436,8 +651,12 @@
         this.stepState1(slot, world);
       } else if (slot.state === 2) {
         this.stepState2(slot, world);
+      } else if (slot.state === 4) {
+        this.stepState4(slot, world);
       } else if (slot.state === 5) {
         this.stepState5(slot, world);
+      } else if (slot.state === 10) {
+        this.stepState10(slot, world);
       }
     }
 
