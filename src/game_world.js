@@ -49,6 +49,7 @@
       this.doors = [];
       this.doorMap = new Map();
       this.spikeAggressive = !!config.spikeAggressive;
+      this.marioHitEnemy = false;
 
       const stepper = new ActorStepper();
       this.stepper = stepper;
@@ -562,6 +563,44 @@
       }
     }
 
+    // ROM $D4A1 + $D58A 準拠: マリオと有効な表側ザコ敵の接触判定
+    isMarioEnemyHit(mario, enemy) {
+      if (mario.flag & 0x08) return false;
+      if (mario.state === 7 || mario.state === 10 || mario.state === 11 ||
+          mario.state === 15 || mario.state === 16) {
+        return false;
+      }
+      if (enemy.isBack) return false;
+      if (enemy.state === 4 || enemy.state === 10 || enemy.state === 13 ||
+          enemy.state === 15 || enemy.state === 16) {
+        return false;
+      }
+
+      let dx = mario.x - enemy.x;
+      const halfW = this.worldWidth / 2;
+      if (dx >= halfW) dx -= this.worldWidth;
+      if (dx < -halfW) dx += this.worldWidth;
+      const absDx = dx >= 0 ? dx : (-dx - 1);
+      if (absDx >= 6) return false;
+
+      const dy = mario.y - enemy.y;
+      const absDy = dy >= 0 ? dy : (-dy - 1);
+      if (absDy >= 8) return false;
+
+      return true;
+    }
+
+    updateMarioEnemyHit() {
+      this.marioHitEnemy = false;
+      if (!this.enemies || this.enemies.length === 0) return;
+      for (let i = 0; i < this.enemies.length; i++) {
+        if (this.isMarioEnemyHit(this.mario, this.enemies[i])) {
+          this.marioHitEnemy = true;
+          break;
+        }
+      }
+    }
+
     step(inputBits = 0) {
       let b = inputBits;
       if ((b & (LEFT | RIGHT)) === (LEFT | RIGHT)) {
@@ -588,6 +627,7 @@
       }
 
       this.updateEffectsAndWaves();
+      this.updateMarioEnemyHit();
       this.f += 1;
     }
   }
