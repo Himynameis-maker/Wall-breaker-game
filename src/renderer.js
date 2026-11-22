@@ -755,22 +755,6 @@
             }
             continue;
           }
-          if (!isBottomRow && belowTile === TILE.SAND_LADDER) {
-            ctx.save();
-            ctx.globalAlpha = 0.36;
-            ctx.fillStyle = "#2858b8";
-            ctx.fillRect(x, floorY, 16, 6);
-            ctx.fillStyle = "#88b0f8";
-            ctx.fillRect(x, floorY, 16, 1);
-            ctx.globalAlpha = 0.64;
-            ctx.fillStyle = "#dec078";
-            const sandShift = (world.f >> 1) & 3;
-            for (let sx = 0; sx < 16; sx += 4) {
-              ctx.fillRect(x + ((sx + sandShift) & 15), floorY, 2, 2);
-            }
-            ctx.restore();
-            continue;
-          }
           ctx.fillStyle = "#2858b8";
           ctx.fillRect(x, floorY, 16, 6);
           ctx.fillStyle = "#5890f8";
