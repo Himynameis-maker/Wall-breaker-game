@@ -9,6 +9,7 @@
   const LEFT = G.LEFT || 2;
 
   const L = TILE.LADDER;
+  const SL = TILE.SAND_LADDER;
   const D = TILE.DRUM;
   const H = TILE.HOLE;
   const W1 = TILE.WALL_1;
@@ -21,6 +22,22 @@
   const P = TILE.PILLAR;
 
   const STAGES = {
+    sandLadderDemo: {
+      cols: 16,
+      rows: 8,
+      tiles: [
+        [4, 3, L], [4, 7, SL], [4, 11, L],
+        [5, 3, L], [5, 7, SL], [5, 9, SL], [5, 11, L], [5, 13, SL],
+        [6, 3, L], [6, 5, SL], [6, 9, BL], [6, 11, SL], [6, 13, P], [6, 14, B], [6, 15, W1],
+        [7, 0, D], [7, 2, L], [7, 8, SL], [7, 12, L], [7, 15, D]
+      ],
+      mario: { x: 32, y: 224 },
+      spike: { x: 144, y: 128 },
+      enemies: [
+        { enemyType: "spanagon", x: 160, y: 192, dir: LEFT },
+        { enemyType: "eggplant", x: 176, y: 224, dir: LEFT }
+      ]
+    },
     timedBombDemo: {
       cols: 16,
       rows: 8,
