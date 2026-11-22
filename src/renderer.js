@@ -143,6 +143,7 @@
         PALETTE_SPIKE
       );
       this.wireFencePattern = this.makeWireFencePattern();
+      this.floorBlockPattern = this.makeFloorBlockPattern();
     }
 
     makeWireFencePattern() {
@@ -165,6 +166,34 @@
       return this.ctx.createPattern(c, "repeat");
     }
 
+    makeFloorBlockPattern() {
+      const c = document.createElement("canvas");
+      c.width = 8;
+      c.height = 8;
+      const g = c.getContext("2d");
+      // 8x8 正方形の青ブロック（立体縁取り＋内側デザイン入り）
+      g.fillStyle = "#1e4498";
+      g.fillRect(0, 0, 8, 8);
+      // 上・左のハイライト
+      g.fillStyle = "#4278d8";
+      g.fillRect(0, 0, 7, 1);
+      g.fillRect(0, 0, 1, 7);
+      g.fillStyle = "#78a8ff";
+      g.fillRect(0, 0, 1, 1);
+      // 下・右の暗影（目地）
+      g.fillStyle = "#0c183c";
+      g.fillRect(0, 7, 8, 1);
+      g.fillRect(7, 0, 1, 8);
+      // 内側のちょっとした凹凸デザイン
+      g.fillStyle = "#142e72";
+      g.fillRect(2, 2, 4, 1);
+      g.fillRect(2, 2, 1, 4);
+      g.fillStyle = "#2b5cc2";
+      g.fillRect(3, 5, 3, 1);
+      g.fillRect(5, 3, 1, 3);
+      return this.ctx.createPattern(c, "repeat");
+    }
+
     ensureCanvasSize(world) {
       const targetW = world.worldWidth;
       const targetH = this.viewHeight;
@@ -177,27 +206,80 @@
     }
 
     getWorldHeight(world) {
-      return world.rows * 32 + 12;
+      return world.rows * 32 + 24;
     }
 
     resetCamera(world) {
-      const maxCamY = Math.max(0, this.getWorldHeight(world) - this.viewHeight);
+      const minCamY = -24;
+      const maxCamY = Math.max(minCamY, this.getWorldHeight(world) - this.viewHeight);
       const targetY = world.mario.y - this.viewHeight * 0.58;
-      this.camY = Math.max(0, Math.min(maxCamY, Math.round(targetY)));
+      this.camY = Math.max(minCamY, Math.min(maxCamY, Math.round(targetY)));
     }
 
     updateCamera(world) {
-      const maxCamY = Math.max(0, this.getWorldHeight(world) - this.viewHeight);
-      if (maxCamY === 0) {
-        this.camY = 0;
+      const minCamY = -24;
+      const maxCamY = Math.max(minCamY, this.getWorldHeight(world) - this.viewHeight);
+      if (maxCamY === minCamY) {
+        this.camY = minCamY;
         return;
       }
-      const targetY = Math.max(0, Math.min(maxCamY, world.mario.y - this.viewHeight * 0.58));
+      const targetY = Math.max(minCamY, Math.min(maxCamY, world.mario.y - this.viewHeight * 0.58));
       const diff = targetY - this.camY;
       if (Math.abs(diff) <= 1.5) {
         this.camY = targetY;
       } else {
         this.camY += diff * 0.2;
+      }
+    }
+
+    drawRoof(ctx, w) {
+      // 天井の屋根（平べったい台形シルエット＋ブロック模様：y = -14 .. 0）
+      ctx.fillStyle = "#1e4498";
+      ctx.fillRect(10, -14, Math.max(0, w - 20), 2);
+      ctx.fillRect(6, -12, Math.max(0, w - 12), 3);
+      ctx.fillRect(2, -9, Math.max(0, w - 4), 4);
+
+      // 上面の明るいハイライト＆肩の縁
+      ctx.fillStyle = "#689cff";
+      ctx.fillRect(10, -14, Math.max(0, w - 20), 1);
+      ctx.fillRect(6, -12, 4, 1);
+      ctx.fillRect(w - 10, -12, 4, 1);
+      ctx.fillStyle = "#4278d8";
+      ctx.fillRect(2, -9, 4, 1);
+      ctx.fillRect(w - 6, -9, 4, 1);
+      ctx.fillRect(10, -13, Math.max(0, w - 20), 1);
+
+      // 屋根の縦目地・デザインリブ（8px単位で屋根瓦／板金風）
+      for (let x = 8; x < w - 8; x += 8) {
+        const topY = (x >= 10 && x < w - 10) ? -13 : -11;
+        ctx.fillStyle = "#0c183c";
+        ctx.fillRect(x, topY, 1, -5 - topY);
+        ctx.fillStyle = "#3468c8";
+        ctx.fillRect(x + 1, topY, 1, -5 - topY);
+      }
+
+      // 屋根上部の平べったい装飾凹み（16px単位）
+      for (let x = 16; x < w - 24; x += 16) {
+        ctx.fillStyle = "#142e72";
+        ctx.fillRect(x + 4, -10, 8, 2);
+        ctx.fillStyle = "#2b5cc2";
+        ctx.fillRect(x + 4, -8, 8, 1);
+      }
+
+      // 軒先の横桁・平べったい青ブロック帯（y = -5 .. 0）
+      ctx.fillStyle = "#1e4498";
+      ctx.fillRect(0, -5, w, 5);
+      ctx.fillStyle = "#4278d8";
+      ctx.fillRect(0, -5, w, 1);
+      ctx.fillStyle = "#0c183c";
+      ctx.fillRect(0, -1, w, 1);
+      for (let x = 0; x < w; x += 8) {
+        ctx.fillStyle = "#4278d8";
+        ctx.fillRect(x, -5, 1, 4);
+        ctx.fillStyle = "#0c183c";
+        ctx.fillRect(x + 7, -5, 1, 5);
+        ctx.fillStyle = "#142e72";
+        ctx.fillRect(x + 2, -3, 4, 1);
       }
     }
 
@@ -773,6 +855,19 @@
       ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
       ctx.fillRect(0, 0, 1, world.rows * 32);
       ctx.fillRect(w - 1, 0, 1, world.rows * 32);
+
+      // 画面外の天井（平べったい青屋根）と画面外の床（小さい正方形の青ブロック）
+      this.drawRoof(ctx, w);
+      if (this.floorBlockPattern) {
+        const floorBottomStartY = world.rows * 32 + 6;
+        const viewBottomY = camOffset + h;
+        const fillH = Math.max(24, viewBottomY - floorBottomStartY);
+        ctx.save();
+        ctx.translate(0, floorBottomStartY);
+        ctx.fillStyle = this.floorBlockPattern;
+        ctx.fillRect(0, 0, w, fillH);
+        ctx.restore();
+      }
 
       // 床（穴・落下開始穴 $0C および同種連続はしごの中間以外は鉄骨を描画、最下段は常に足場あり）
       for (let row = 0; row < world.rows; row++) {
