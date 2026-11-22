@@ -40,6 +40,12 @@
     (a === TILE.LADDER && b === TILE.LADDER) ||
     (a === TILE.BREAK_LADDER && b === TILE.BREAK_LADDER) ||
     (a === TILE.SAND_LADDER && b === TILE.SAND_LADDER));
+  const EDGE_SAFE_COLS = G.EDGE_SAFE_COLS || 2;
+  const isEdgeSafeCol = G.isEdgeSafeCol || ((col, cols) => {
+    if (!cols || cols <= EDGE_SAFE_COLS * 2) return false;
+    const wc = ((col % cols) + cols) % cols;
+    return wc < EDGE_SAFE_COLS || wc >= cols - EDGE_SAFE_COLS;
+  });
   const getHammerTiming = G.getHammerTiming || (slot => {
     if (slot.isMario) {
       return slot.isGolden
@@ -136,6 +142,27 @@
         },
         PALETTE_SPIKE
       );
+      this.wireFencePattern = this.makeWireFencePattern();
+    }
+
+    makeWireFencePattern() {
+      const c = document.createElement("canvas");
+      c.width = 8;
+      c.height = 8;
+      const g = c.getContext("2d");
+      for (let i = 0; i < 8; i++) {
+        g.fillStyle = "#8a94a6";
+        g.fillRect(i, i, 1, 1);
+        g.fillStyle = "#727c8e";
+        g.fillRect(7 - i, i, 1, 1);
+      }
+      g.fillStyle = "#aab4c4";
+      g.fillRect(0, 0, 1, 1);
+      g.fillRect(7, 0, 1, 1);
+      g.fillRect(3, 3, 2, 2);
+      g.fillRect(0, 7, 1, 1);
+      g.fillRect(7, 7, 1, 1);
+      return this.ctx.createPattern(c, "repeat");
     }
 
     ensureCanvasSize(world) {
@@ -729,12 +756,25 @@
       ctx.save();
       ctx.translate(0, -camOffset);
 
+      // 画面端2マス（左右合計4マス）の背景金網グラフィック（明るめグレー）
+      if (world.cols > EDGE_SAFE_COLS * 2 && this.wireFencePattern) {
+        const edgeW = EDGE_SAFE_COLS * 16;
+        const fenceH = world.rows * 32;
+        ctx.save();
+        ctx.globalAlpha = 0.65;
+        ctx.fillStyle = this.wireFencePattern;
+        ctx.fillRect(0, 0, edgeW, fenceH);
+        ctx.translate(w - edgeW, 0);
+        ctx.fillRect(0, 0, edgeW, fenceH);
+        ctx.restore();
+      }
+
       // 左右端ループゾーンの目印（ごく薄いガイド線）
       ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
       ctx.fillRect(0, 0, 1, world.rows * 32);
       ctx.fillRect(w - 1, 0, 1, world.rows * 32);
 
-      // 床（穴・落下開始穴 $0C および同種連続はしごの中間以外は青い鉄骨を描画、最下段は常に足場あり）
+      // 床（穴・落下開始穴 $0C および同種連続はしごの中間以外は鉄骨を描画、最下段は常に足場あり）
       for (let row = 0; row < world.rows; row++) {
         const floorY = (row + 1) * 32;
         const isBottomRow = row === world.rows - 1;
@@ -755,12 +795,21 @@
             }
             continue;
           }
-          ctx.fillStyle = "#2858b8";
-          ctx.fillRect(x, floorY, 16, 6);
-          ctx.fillStyle = "#5890f8";
-          ctx.fillRect(x, floorY, 16, 2);
-          ctx.fillStyle = "#183070";
-          ctx.fillRect(x + 2, floorY + 2, 12, 2);
+          if (isEdgeSafeCol(col, world.cols)) {
+            ctx.fillStyle = "#c86018";
+            ctx.fillRect(x, floorY, 16, 6);
+            ctx.fillStyle = "#ff9c38";
+            ctx.fillRect(x, floorY, 16, 2);
+            ctx.fillStyle = "#6e2c08";
+            ctx.fillRect(x + 2, floorY + 2, 12, 2);
+          } else {
+            ctx.fillStyle = "#2858b8";
+            ctx.fillRect(x, floorY, 16, 6);
+            ctx.fillStyle = "#5890f8";
+            ctx.fillRect(x, floorY, 16, 2);
+            ctx.fillStyle = "#183070";
+            ctx.fillRect(x + 2, floorY + 2, 12, 2);
+          }
         }
       }
 
