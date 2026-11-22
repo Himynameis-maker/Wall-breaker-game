@@ -152,6 +152,7 @@
   <div class="topbar">
     <div class="btn-row">
       <select id="stageSelect" aria-label="ステージ選択">
+        <option value="timedBombDemo">時限爆弾テスト（16×8）</option>
         <option value="enemyDemo">敵・火の玉テスト（16×8）</option>
         <option value="doorDemo">ドア＆爆弾連動テスト（16×8）</option>
         <option value="pillarDemo">鉄柱＆落下テスト（16×8）</option>
@@ -160,6 +161,13 @@
         <option value="wide10">拡大20×10（マップ拡大テスト）</option>
         <option value="compact6">小型12×6（狭小テスト）</option>
         <option value="u6">U6 基準（16×6・はしご1本）</option>
+      </select>
+      <select id="timedBombSecSelect" aria-label="時限爆弾秒数設定">
+        <option value="">時限爆弾: ステージ設定</option>
+        <option value="60">時限爆弾: 全60s (12時)</option>
+        <option value="45">時限爆弾: 全45s (9時)</option>
+        <option value="30">時限爆弾: 全30s (6時)</option>
+        <option value="15">時限爆弾: 全15s (3時)</option>
       </select>
       <select id="zoomSelect" aria-label="表示サイズ">
         <option value="fit">画面幅フィット</option>
@@ -210,6 +218,7 @@
       const screenWrap = document.getElementById("screenWrap");
       const renderer = new Renderer(canvas, { viewHeight: 240 });
       const stageSelect = document.getElementById("stageSelect");
+      const timedBombSecSelect = document.getElementById("timedBombSecSelect");
       const zoomSelect = document.getElementById("zoomSelect");
       const resetBtn = document.getElementById("resetBtn");
       const pauseBtn = document.getElementById("pauseBtn");
@@ -245,11 +254,16 @@
       }
 
       function createStage() {
-        const cfg = STAGES[stageSelect.value] || STAGES.doorDemo;
+        const cfg = STAGES[stageSelect.value] || STAGES.timedBombDemo;
+        const tbVal = Number(timedBombSecSelect.value);
+        const timedBombOverrideSec = (tbVal === 15 || tbVal === 30 || tbVal === 45 || tbVal === 60) ? tbVal : null;
         world = new GameWorld({
           cols: cfg.cols,
           rows: cfg.rows,
           tiles: cfg.tiles,
+          timedBombs: cfg.timedBombs,
+          timedBombSec: cfg.timedBombSec,
+          timedBombOverrideSec,
           mario: cfg.mario,
           spike: cfg.spike,
           enemies: cfg.enemies,
@@ -318,6 +332,16 @@
         return "FB st:3(待機) wait:" + fb.waitTimer + " (" + remF + "F/" + (remF / 60).toFixed(1) + "s)" + stopTag;
       }
 
+      function timedBombLabel(tb, w) {
+        const sec = (tb.remainFrames / 60).toFixed(1);
+        const step = Math.ceil(Math.max(1, tb.remainFrames) / 300) % 12;
+        const clock = step === 0 ? 12 : step;
+        const blinkTag = (tb.remainFrames <= 600 && (Math.floor((600 - tb.remainFrames) / 30) % 2 === 0)) ? "*" : "";
+        const fallTag = tb.falling ? "F" : "";
+        const stopTag = w.allBackStop ? "[STOP]" : "";
+        return "(" + tb.row + "," + tb.col + "):" + sec + "s/" + clock + "時" + blinkTag + fallTag + stopTag;
+      }
+
       function renderNow() {
         renderer.draw(world);
         const m = world.mario;
@@ -335,6 +359,9 @@
           "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + marioHitLabel + "\n" +
           "Spike st:" + s.state + " X:" + s.x + " Y:" + s.y + " (" + s.row + "," + s.col + ") f:" + (s.facing & 2 ? "L" : "R") + actorTag(s) + "\n" +
           "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer + " | " + fireballLabel(world.fireball, world);
+        if (world.timedBombs && world.timedBombs.length > 0) {
+          hudEl.textContent += "\nTB: " + world.timedBombs.map(tb => timedBombLabel(tb, world)).join(" | ");
+        }
         if (world.enemies && world.enemies.length > 0) {
           hudEl.textContent += "\n" + world.enemies.map((e, idx) =>
             "E" + idx + "(" + enemyKindTag(e) + ") st:" + e.state + " X:" + e.x + " Y:" + e.y + " (" + e.row + "," + e.col + ") f:" + (e.facing & 2 ? "L" : "R") + actorTag(e)
@@ -467,6 +494,7 @@
       });
 
       stageSelect.addEventListener("change", createStage);
+      timedBombSecSelect.addEventListener("change", createStage);
       zoomSelect.addEventListener("change", applyZoomMode);
       resetBtn.addEventListener("click", createStage);
 
