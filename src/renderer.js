@@ -87,6 +87,49 @@
     SPIKE_CLIMB2
   } = S;
 
+  const PIXEL_FONT = {
+    A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+    B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+    C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
+    D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+    E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+    F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+    G: ["01111", "10000", "10000", "10111", "10001", "10001", "01110"],
+    H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+    I: ["01110", "00100", "00100", "00100", "00100", "00100", "01110"],
+    J: ["00111", "00010", "00010", "00010", "00010", "10010", "01100"],
+    K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+    L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+    M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
+    N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+    O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+    P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+    Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
+    R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+    S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+    T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+    U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+    V: ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+    W: ["10001", "10001", "10001", "10101", "10101", "11011", "10001"],
+    X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
+    Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+    Z: ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
+    "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
+    "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
+    "2": ["01110", "10001", "00001", "00110", "01000", "10000", "11111"],
+    "3": ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
+    "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
+    "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
+    "6": ["01110", "10000", "10000", "11110", "10001", "10001", "01110"],
+    "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
+    "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
+    "9": ["01110", "10001", "10001", "01111", "00001", "00001", "01110"],
+    "!": ["00100", "00100", "00100", "00100", "00100", "00000", "00100"],
+    "-": ["00000", "00000", "00000", "11111", "00000", "00000", "00000"],
+    ":": ["00000", "00100", "00100", "00000", "00100", "00100", "00000"],
+    " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"]
+  };
+
   function bakeSprite(rows, palette, flipX) {
     const c = document.createElement("canvas");
     c.width = 16;
@@ -121,6 +164,8 @@
       this.ctx.imageSmoothingEnabled = false;
       this.viewHeight = options.viewHeight || 240;
       this.camY = 0;
+      this.isIntroCamMoving = false;
+      this.bannerCache = new Map();
 
       this.marioSprites = makeSpriteSet(
         {
@@ -209,77 +254,250 @@
       return world.rows * 32 + 24;
     }
 
-    resetCamera(world) {
+    getBaseCamY(world) {
       const minCamY = -24;
       const maxCamY = Math.max(minCamY, this.getWorldHeight(world) - this.viewHeight);
-      const targetY = world.mario.y - this.viewHeight * 0.58;
-      this.camY = Math.max(minCamY, Math.min(maxCamY, Math.round(targetY)));
+      const targetY = Math.round(world.mario.y - this.viewHeight * 0.58);
+      return Math.max(minCamY, Math.min(maxCamY, targetY));
+    }
+
+    resetCamera(world) {
+      this.isIntroCamMoving = false;
+      this.camY = world.introActive ? -24 : this.getBaseCamY(world);
     }
 
     updateCamera(world) {
       const minCamY = -24;
       const maxCamY = Math.max(minCamY, this.getWorldHeight(world) - this.viewHeight);
+      const baseCamY = this.getBaseCamY(world);
+
+      if (world.snapCameraRequested) {
+        world.snapCameraRequested = false;
+        this.camY = baseCamY;
+        this.isIntroCamMoving = false;
+        return;
+      }
+
+      if (world.introActive) {
+        const d1 = maxCamY - minCamY;
+        if (d1 <= 0) {
+          this.camY = minCamY;
+          this.isIntroCamMoving = false;
+          return;
+        }
+
+        const t = world.introFrame || 0;
+        const total = world.introTotalFrames || 288;
+        const holdStart = 18;
+        const holdEnd = 18;
+        const d2 = maxCamY - baseCamY;
+        const ease = p => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, p)));
+
+        if (d2 <= 0) {
+          const moveEnd = total - holdEnd;
+          if (t <= holdStart) {
+            this.camY = minCamY;
+            this.isIntroCamMoving = false;
+          } else if (t < moveEnd) {
+            const p = (t - holdStart) / (moveEnd - holdStart);
+            this.camY = minCamY + d1 * ease(p);
+            this.isIntroCamMoving = true;
+          } else {
+            this.camY = baseCamY;
+            this.isIntroCamMoving = false;
+          }
+        } else {
+          const holdMid = 12;
+          const moveBudget = total - holdStart - holdMid - holdEnd;
+          const downFrames = Math.max(30, Math.min(moveBudget - 30, Math.round(moveBudget * (d1 / (d1 + d2)))));
+          const downEnd = holdStart + downFrames;
+          const midEnd = downEnd + holdMid;
+          const upEnd = total - holdEnd;
+
+          if (t <= holdStart) {
+            this.camY = minCamY;
+            this.isIntroCamMoving = false;
+          } else if (t < downEnd) {
+            const p = (t - holdStart) / downFrames;
+            this.camY = minCamY + d1 * ease(p);
+            this.isIntroCamMoving = true;
+          } else if (t <= midEnd) {
+            this.camY = maxCamY;
+            this.isIntroCamMoving = false;
+          } else if (t < upEnd) {
+            const p = (t - midEnd) / (upEnd - midEnd);
+            this.camY = maxCamY - d2 * ease(p);
+            this.isIntroCamMoving = true;
+          } else {
+            this.camY = baseCamY;
+            this.isIntroCamMoving = false;
+          }
+        }
+        return;
+      }
+
+      this.isIntroCamMoving = false;
       if (maxCamY === minCamY) {
         this.camY = minCamY;
         return;
       }
-      const targetY = Math.max(minCamY, Math.min(maxCamY, world.mario.y - this.viewHeight * 0.58));
-      const diff = targetY - this.camY;
+      const diff = baseCamY - this.camY;
       if (Math.abs(diff) <= 1.5) {
-        this.camY = targetY;
+        this.camY = baseCamY;
       } else {
         this.camY += diff * 0.2;
       }
     }
 
+    getBannerCanvas(text, boilPhase) {
+      const str = String(text || "").toUpperCase();
+      const key = str + "_" + boilPhase;
+      const cached = this.bannerCache.get(key);
+      if (cached) return cached;
+      if (this.bannerCache.size > 120) {
+        this.bannerCache.clear();
+      }
+
+      const scale = 3;
+      const pad = 5;
+      const cols = Math.max(1, str.length * 6 - 1);
+      const rows = 7;
+      const pw = cols * scale + pad * 2;
+      const ph = rows * scale + pad * 2;
+      const body = new Uint8Array(pw * ph);
+
+      for (let i = 0; i < str.length; i++) {
+        const glyph = PIXEL_FONT[str[i]] || PIXEL_FONT[" "];
+        for (let r = 0; r < rows; r++) {
+          const line = glyph[r];
+          for (let c = 0; c < 5; c++) {
+            if (line[c] === "1") {
+              const bx = pad + (i * 6 + c) * scale;
+              const by = pad + r * scale;
+              for (let sy = 0; sy < scale; sy++) {
+                const rowOff = (by + sy) * pw;
+                for (let sx = 0; sx < scale; sx++) {
+                  body[rowOff + bx + sx] = 1;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = pw;
+      canvas.height = ph;
+      const g = canvas.getContext("2d");
+      const angle = boilPhase >= 0 ? boilPhase * (Math.PI / 2) : 0;
+
+      g.fillStyle = "#060914";
+      for (let y = 0; y < ph; y++) {
+        const y0 = Math.max(0, y - 3);
+        const y1 = Math.min(ph - 1, y + 3);
+        for (let x = 0; x < pw; x++) {
+          if (body[y * pw + x]) continue;
+          const x0 = Math.max(0, x - 3);
+          const x1 = Math.min(pw - 1, x + 3);
+          let minD2 = 99;
+          for (let ny = y0; ny <= y1; ny++) {
+            const dy = ny - y;
+            const dy2 = dy * dy;
+            const rowOff = ny * pw;
+            for (let nx = x0; nx <= x1; nx++) {
+              if (!body[rowOff + nx]) continue;
+              const dx = nx - x;
+              const d2 = dx * dx + dy2;
+              if (d2 < minD2) minD2 = d2;
+            }
+          }
+          if (minD2 <= 2) {
+            g.fillRect(x, y, 1, 1);
+          } else if (boilPhase < 0) {
+            if (minD2 <= 5) {
+              g.fillRect(x, y, 1, 1);
+            }
+          } else {
+            const wave = Math.sin(x * 0.36 + angle) + Math.cos(y * 0.44 - angle);
+            if (wave >= -0.7) {
+              const limit = wave >= 0.35 ? 8 : 5;
+              if (minD2 <= limit) {
+                g.fillRect(x, y, 1, 1);
+              }
+            }
+          }
+        }
+      }
+
+      g.fillStyle = "#ffffff";
+      for (let y = 0; y < ph; y++) {
+        const rowOff = y * pw;
+        for (let x = 0; x < pw; x++) {
+          if (body[rowOff + x]) {
+            g.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+
+      this.bannerCache.set(key, canvas);
+      return canvas;
+    }
+
+    drawBannerText(ctx, canvasW, text, centerY, boilPhase) {
+      const img = this.getBannerCanvas(text, boilPhase);
+      const x = Math.round((canvasW - img.width) / 2);
+      const y = Math.round(centerY - img.height / 2);
+      ctx.drawImage(img, x, y);
+    }
+
     drawRoof(ctx, w) {
-      // 天井の屋根（平べったい台形シルエット＋ブロック模様：y = -14 .. 0）
+      // 天井の屋根（平べったい台形シルエット＋ブロック模様：y = -9 .. 6、下端6pxで1段目の縦幅を他段と統一）
       ctx.fillStyle = "#1e4498";
-      ctx.fillRect(10, -14, Math.max(0, w - 20), 2);
-      ctx.fillRect(6, -12, Math.max(0, w - 12), 3);
-      ctx.fillRect(2, -9, Math.max(0, w - 4), 4);
+      ctx.fillRect(10, -9, Math.max(0, w - 20), 2);
+      ctx.fillRect(6, -7, Math.max(0, w - 12), 3);
+      ctx.fillRect(2, -4, Math.max(0, w - 4), 4);
 
       // 上面の明るいハイライト＆肩の縁
       ctx.fillStyle = "#689cff";
-      ctx.fillRect(10, -14, Math.max(0, w - 20), 1);
-      ctx.fillRect(6, -12, 4, 1);
-      ctx.fillRect(w - 10, -12, 4, 1);
+      ctx.fillRect(10, -9, Math.max(0, w - 20), 1);
+      ctx.fillRect(6, -7, 4, 1);
+      ctx.fillRect(w - 10, -7, 4, 1);
       ctx.fillStyle = "#4278d8";
-      ctx.fillRect(2, -9, 4, 1);
-      ctx.fillRect(w - 6, -9, 4, 1);
-      ctx.fillRect(10, -13, Math.max(0, w - 20), 1);
+      ctx.fillRect(2, -4, 4, 1);
+      ctx.fillRect(w - 6, -4, 4, 1);
+      ctx.fillRect(10, -8, Math.max(0, w - 20), 1);
 
       // 屋根の縦目地・デザインリブ（8px単位で屋根瓦／板金風）
       for (let x = 8; x < w - 8; x += 8) {
-        const topY = (x >= 10 && x < w - 10) ? -13 : -11;
+        const topY = (x >= 10 && x < w - 10) ? -8 : -6;
         ctx.fillStyle = "#0c183c";
-        ctx.fillRect(x, topY, 1, -5 - topY);
+        ctx.fillRect(x, topY, 1, -topY);
         ctx.fillStyle = "#3468c8";
-        ctx.fillRect(x + 1, topY, 1, -5 - topY);
+        ctx.fillRect(x + 1, topY, 1, -topY);
       }
 
       // 屋根上部の平べったい装飾凹み（16px単位）
       for (let x = 16; x < w - 24; x += 16) {
         ctx.fillStyle = "#142e72";
-        ctx.fillRect(x + 4, -10, 8, 2);
+        ctx.fillRect(x + 4, -5, 8, 2);
         ctx.fillStyle = "#2b5cc2";
-        ctx.fillRect(x + 4, -8, 8, 1);
+        ctx.fillRect(x + 4, -3, 8, 1);
       }
 
-      // 軒先の横桁・平べったい青ブロック帯（y = -5 .. 0）
+      // 軒先の横桁・平べったい青ブロック帯（y = 0 .. 6、他段鉄骨と同じ6px厚）
       ctx.fillStyle = "#1e4498";
-      ctx.fillRect(0, -5, w, 5);
+      ctx.fillRect(0, 0, w, 6);
       ctx.fillStyle = "#4278d8";
-      ctx.fillRect(0, -5, w, 1);
+      ctx.fillRect(0, 0, w, 1);
       ctx.fillStyle = "#0c183c";
-      ctx.fillRect(0, -1, w, 1);
+      ctx.fillRect(0, 5, w, 1);
       for (let x = 0; x < w; x += 8) {
         ctx.fillStyle = "#4278d8";
-        ctx.fillRect(x, -5, 1, 4);
+        ctx.fillRect(x, 0, 1, 5);
         ctx.fillStyle = "#0c183c";
-        ctx.fillRect(x + 7, -5, 1, 5);
+        ctx.fillRect(x + 7, 0, 1, 6);
         ctx.fillStyle = "#142e72";
-        ctx.fillRect(x + 2, -3, 4, 1);
+        ctx.fillRect(x + 2, 2, 4, 2);
       }
     }
 
@@ -841,20 +1059,21 @@
       // 画面端2マス（左右合計4マス）の背景金網グラフィック（明るめグレー）
       if (world.cols > EDGE_SAFE_COLS * 2 && this.wireFencePattern) {
         const edgeW = EDGE_SAFE_COLS * 16;
-        const fenceH = world.rows * 32;
+        const fenceTop = 6;
+        const fenceH = Math.max(0, world.rows * 32 - fenceTop);
         ctx.save();
         ctx.globalAlpha = 0.65;
         ctx.fillStyle = this.wireFencePattern;
-        ctx.fillRect(0, 0, edgeW, fenceH);
+        ctx.fillRect(0, fenceTop, edgeW, fenceH);
         ctx.translate(w - edgeW, 0);
-        ctx.fillRect(0, 0, edgeW, fenceH);
+        ctx.fillRect(0, fenceTop, edgeW, fenceH);
         ctx.restore();
       }
 
       // 左右端ループゾーンの目印（ごく薄いガイド線）
       ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
-      ctx.fillRect(0, 0, 1, world.rows * 32);
-      ctx.fillRect(w - 1, 0, 1, world.rows * 32);
+      ctx.fillRect(0, 6, 1, Math.max(0, world.rows * 32 - 6));
+      ctx.fillRect(w - 1, 6, 1, Math.max(0, world.rows * 32 - 6));
 
       // 画面外の天井（平べったい青屋根）と画面外の床（小さい正方形の青ブロック）
       this.drawRoof(ctx, w);
@@ -1010,6 +1229,14 @@
       }
 
       ctx.restore();
+
+      if (world.introActive) {
+        const text = "STAGE " + (world.stageNumber || 1);
+        const boilPhase = this.isIntroCamMoving ? (Math.floor(world.introFrame / 6) % 4) : -1;
+        this.drawBannerText(ctx, w, text, 44, boilPhase);
+      } else if (world.startBannerTimer > 0) {
+        this.drawBannerText(ctx, w, "START!", 44, -1);
+      }
     }
 
     pickFrame(slot, world) {
