@@ -33,6 +33,7 @@
       spike: { x: 192, y: 64 },
       enemies: [
         { enemyType: "spanagon", x: 240, y: 192, dir: LEFT },
+        { enemyType: "spanagonFast", x: 160, y: 224, dir: LEFT },
         { enemyType: "eggplant", x: 16, y: 192, dir: RIGHT }
       ]
     },

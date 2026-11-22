@@ -50,9 +50,12 @@
       this.doorMap = new Map();
       this.spikeAggressive = !!config.spikeAggressive;
       this.marioHitEnemy = false;
+      this.marioHitFireball = false;
       this.allBackStop = false;
       this.allBackTimer = 0;
       this.allBackDone = false;
+      this.fireballEnabled = config.fireball !== false;
+      this.fireballFast = !!config.fireballFast;
 
       const stepper = new ActorStepper();
       this.stepper = stepper;
@@ -90,6 +93,27 @@
           this.enemies.push(e);
         }
       }
+
+      this.fireball = this.createInitialFireball();
+    }
+
+    createInitialFireball() {
+      if (!this.fireballEnabled) {
+        return null;
+      }
+      return {
+        state: 3, // 0:出現準備, 1:発生アニメ(64F), 2:飛行中, 3:消滅アニメ＆出現待機
+        x: 8,
+        y: 64,
+        baseY: 64,
+        dir: RIGHT,
+        spawnTimer: 0,
+        waitTimer: this.fireballFast ? 0x40 : 0xff, // 原作 $D44E: 初回 $FF(×8F=約34秒) / $40(×8F=約8.5秒)
+        disappearDone: true,
+        animStage: -1, // -1:非表示, 0:極小, 1:小, 2:大A, 3:大B
+        animCount: 0,
+        waveTick: 0
+      };
     }
 
     wrapX(x) {
@@ -566,6 +590,101 @@
       }
     }
 
+    // ROM $D2ED〜$D309 準拠: マリオの段（はしご途中は近い方の段）を火の玉の出現高さにする
+    getFireballStartY() {
+      const my = this.mario.y;
+      const snapped = ((my & 0x0f) !== 0 && (my & 0x10) !== 0)
+        ? ((my & ~0x1f) + 32)
+        : (my & ~0x1f);
+      return Math.max(32, Math.min(this.rows * 32, snapped));
+    }
+
+    // ROM $D2B4〜$D4A0 準拠（Y軌道のみ「避けられる大波無し・ややウェーブ」へ調整）
+    updateFireball() {
+      const fb = this.fireball;
+      if (!fb) return;
+
+      if (fb.state === 0) {
+        // State 0: 出現準備（マリオの高さ＆左右の遠い方に出現）
+        const startY = this.getFireballStartY();
+        fb.baseY = startY;
+        fb.y = startY;
+        const halfCols = Math.floor(this.cols / 2);
+        if (this.mario.col < halfCols) {
+          fb.dir = LEFT;
+          fb.x = Math.max(8, this.worldWidth - 24);
+        } else {
+          fb.dir = RIGHT;
+          fb.x = 8;
+        }
+        fb.state = 1;
+        fb.spawnTimer = 64; // 64F発生アニメ待機
+        fb.animStage = 0;   // 極小の火種から開始
+        fb.animCount = 0;
+        fb.waveTick = 0;
+        fb.disappearDone = false;
+        return;
+      }
+
+      if (fb.state === 1) {
+        // State 1: 発生アニメーション（だんだん大きくなってから飛び始める）
+        fb.spawnTimer -= 1;
+        fb.animCount += 1;
+        if (fb.animStage < 2) {
+          if ((this.f & 0x07) === 0) {
+            fb.animStage += 1;
+          }
+        } else {
+          fb.animStage = ((fb.animCount >> 1) & 1) ? 3 : 2;
+        }
+        if (fb.spawnTimer <= 0) {
+          fb.state = 2;
+        }
+        return;
+      }
+
+      if (fb.state === 2) {
+        // State 2: 水平飛行（1.0px/F）＋ ややウェーブ（障害物をすべて素通りし反対側の端で消滅）
+        fb.x += (fb.dir === LEFT) ? -1 : 1;
+        const reachedEnd = (fb.dir === LEFT)
+          ? (fb.x <= 8)
+          : (fb.x >= Math.max(8, this.worldWidth - 16));
+        if (reachedEnd) {
+          fb.state = 3;
+          fb.disappearDone = false;
+          fb.animStage = 3;
+          fb.waitTimer = this.fireballFast ? 0x20 : 0x60; // 原作 $D44C: $60(×8F=約12.8秒) / $20(×8F=約4.3秒)
+          return;
+        }
+        fb.waveTick += 1;
+        fb.y = fb.baseY + Math.round(Math.sin(fb.waveTick * (Math.PI * 2 / 36)) * 2.5);
+        fb.animCount += 1;
+        fb.animStage = ((fb.animCount >> 1) & 1) ? 3 : 2;
+        return;
+      }
+
+      if (fb.state === 3) {
+        // State 3: 消滅アニメーション → 完了後は非表示のまま8Fごとに待ちタイマー減算
+        if (!fb.disappearDone) {
+          if ((this.f & 0x07) === 0) {
+            fb.animStage -= 1;
+            if (fb.animStage < 0) {
+              fb.animStage = -1;
+              fb.disappearDone = true;
+            }
+          }
+          return;
+        }
+        if ((this.f & 0x07) === 0) {
+          fb.waitTimer -= 1;
+          if (fb.waitTimer <= 0) {
+            fb.waitTimer = 0;
+            fb.state = 0;
+          }
+        }
+      }
+    }
+
     // ROM $D4A1 + $D58A 準拠: マリオと有効な表側ザコ敵の接触判定
     isMarioEnemyHit(mario, enemy) {
       if (this.allBackStop) return false;
@@ -594,14 +713,44 @@
       return true;
     }
 
+    // ROM $D4EC〜$D50A + $D58A 準拠: マリオと飛行中火の玉の接触判定（State 2のみ有効）
+    isMarioFireballHit(mario, fb) {
+      if (this.allBackStop) return false;
+      if (!fb || fb.state !== 2) return false;
+      if (mario.flag & 0x08) return false;
+      if (mario.state === 7 || mario.state === 10 || mario.state === 11 ||
+          mario.state === 15 || mario.state === 16) {
+        return false;
+      }
+
+      let dx = mario.x - fb.x;
+      const halfW = this.worldWidth / 2;
+      if (dx >= halfW) dx -= this.worldWidth;
+      if (dx < -halfW) dx += this.worldWidth;
+      const absDx = dx >= 0 ? dx : (-dx - 1);
+      if (absDx >= 6) return false;
+
+      const dy = mario.y - fb.y;
+      const absDy = dy >= 0 ? dy : (-dy - 1);
+      if (absDy >= 8) return false;
+
+      return true;
+    }
+
     updateMarioEnemyHit() {
       this.marioHitEnemy = false;
-      if (!this.enemies || this.enemies.length === 0) return;
-      for (let i = 0; i < this.enemies.length; i++) {
-        if (this.isMarioEnemyHit(this.mario, this.enemies[i])) {
-          this.marioHitEnemy = true;
-          break;
+      this.marioHitFireball = false;
+      if (this.enemies && this.enemies.length > 0) {
+        for (let i = 0; i < this.enemies.length; i++) {
+          if (this.isMarioEnemyHit(this.mario, this.enemies[i])) {
+            this.marioHitEnemy = true;
+            break;
+          }
         }
+      }
+      if (this.isMarioFireballHit(this.mario, this.fireball)) {
+        this.marioHitFireball = true;
+        this.marioHitEnemy = true;
       }
     }
 
@@ -713,6 +862,7 @@
         if (this.enemyAI && this.enemies.length > 0) {
           this.enemyAI.updateAll(this);
         }
+        this.updateFireball();
       }
 
       this.updateEffectsAndWaves();

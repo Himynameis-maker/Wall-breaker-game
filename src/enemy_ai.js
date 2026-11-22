@@ -23,8 +23,9 @@
     KNOCKDOWN_DY
   } = G;
 
-  // 初期速度（スパナゴン: 0xAA = 4/8速 = 0.5px/F、ナスビ仮面: 0x77 = 6/8速 = 0.75px/F）
-  const SPANAGON_DEFAULT_SPEED = 0xaa;
+  // 原作初期速度（スパナゴン通常: 0x25 = 3/8速, スパナゴン高速色違い: 0x55 = 4/8速, ナスビ仮面: 0x77 = 6/8速）
+  const SPANAGON_DEFAULT_SPEED = 0x25;
+  const SPANAGON_FAST_DEFAULT_SPEED = 0x55;
   const EGGPLANT_DEFAULT_SPEED = 0x77;
 
   // State 2 昇降用テーブル（ROM $CE51, $CE83 準拠）
@@ -54,9 +55,17 @@
         ? cfg.cmd
         : (this.enemyType === "eggplant" ? (this.facing | UP) : this.facing);
       this.prevCmd = this.cmd;
-      this.speedMask = cfg.speedMask != null
-        ? (cfg.speedMask & 0xff)
-        : (this.enemyType === "eggplant" ? EGGPLANT_DEFAULT_SPEED : SPANAGON_DEFAULT_SPEED);
+
+      if (cfg.speedMask != null) {
+        this.speedMask = cfg.speedMask & 0xff;
+      } else if (this.enemyType === "eggplant") {
+        this.speedMask = EGGPLANT_DEFAULT_SPEED;
+      } else if (this.enemyType === "spanagonFast") {
+        this.speedMask = SPANAGON_FAST_DEFAULT_SPEED;
+      } else {
+        this.speedMask = SPANAGON_DEFAULT_SPEED;
+      }
+
       this.topY = this.y;
       this.avail = 0;
       this.row = 1;
@@ -270,7 +279,7 @@
       return false;
     }
 
-    // $CBAE 相当: ナスビ仮面 (bit1=1) は思考スキップ、スパナゴンは段差・はしご・ドラム缶から向き決定
+    // $CBAE 相当: ナスビ仮面 (bit1=1) は思考スキップ、スパナゴン2種は段差・はしご・ドラム缶から向き決定
     thinkDirection(slot, world) {
       if (slot.enemyType === "eggplant") {
         return;
@@ -826,6 +835,7 @@
 
   const api = {
     SPANAGON_DEFAULT_SPEED,
+    SPANAGON_FAST_DEFAULT_SPEED,
     EGGPLANT_DEFAULT_SPEED,
     EnemyActor,
     EnemyAI

@@ -2,6 +2,8 @@
   "use strict";
 
   const G = root.WreckGame || {};
+  const RIGHT = G.RIGHT || 1;
+  const LEFT = G.LEFT || 2;
   const DOWN = G.DOWN || 4;
   const TILE = G.TILE || {
     EMPTY: 0x00,
@@ -495,6 +497,79 @@
       }
     }
 
+    drawFireball(fb) {
+      if (!fb || fb.animStage < 0) return;
+      const ctx = this.ctx;
+      const cx = Math.round(fb.x + 8);
+      const cy = Math.round(fb.y - 11);
+      const isLeft = (fb.dir & LEFT) !== 0;
+      const tailDir = isLeft ? 1 : -1;
+      const frontDir = -tailDir;
+      const stage = fb.animStage;
+
+      if (stage === 0) {
+        // 極小の火種
+        ctx.fillStyle = "#d83018";
+        ctx.fillRect(cx - 2, cy - 2, 4, 4);
+        ctx.fillStyle = "#ffe860";
+        ctx.fillRect(cx - 1, cy - 1, 2, 2);
+        return;
+      }
+
+      if (stage === 1) {
+        // 小〜中くらいの火の玉
+        ctx.fillStyle = "#e03818";
+        ctx.fillRect(cx - 4, cy - 3, 8, 6);
+        ctx.fillRect(cx - 3, cy - 4, 6, 8);
+        ctx.fillStyle = "#ff8c20";
+        ctx.fillRect(cx - 3, cy - 2, 6, 4);
+        ctx.fillRect(cx - 2, cy - 3, 4, 6);
+        ctx.fillStyle = "#fff490";
+        ctx.fillRect(cx - 1, cy - 1, 2, 2);
+        return;
+      }
+
+      if (stage === 2) {
+        // 大炎A
+        ctx.fillStyle = "#d82818";
+        ctx.fillRect(cx - 5, cy - 4, 10, 8);
+        ctx.fillRect(cx - 4, cy - 5, 8, 10);
+        ctx.fillRect(cx + tailDir * 5 - 1, cy - 4, 3, 2);
+        ctx.fillRect(cx + tailDir * 6 - 1, cy - 1, 3, 3);
+        ctx.fillRect(cx + tailDir * 5 - 1, cy + 3, 3, 2);
+
+        ctx.fillStyle = "#ff8820";
+        ctx.fillRect(cx - 4, cy - 3, 8, 6);
+        ctx.fillRect(cx - 3, cy - 4, 6, 8);
+        ctx.fillRect(cx + tailDir * 4 - 1, cy - 2, 2, 4);
+
+        ctx.fillStyle = "#ffec58";
+        ctx.fillRect(cx + frontDir - 2, cy - 2, 4, 4);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(cx + frontDir - 1, cy - 1, 2, 2);
+        return;
+      }
+
+      // 大炎B（2Fごとに交互揺らめき）
+      ctx.fillStyle = "#f04018";
+      ctx.fillRect(cx - 4, cy - 5, 8, 10);
+      ctx.fillRect(cx - 5, cy - 3, 10, 6);
+      ctx.fillRect(cx - 1, cy - 6, 2, 1);
+      ctx.fillRect(cx - 1, cy + 5, 2, 1);
+      ctx.fillRect(cx + tailDir * 6 - 1, cy - 3, 3, 2);
+      ctx.fillRect(cx + tailDir * 5 - 1, cy + 1, 4, 2);
+
+      ctx.fillStyle = "#ffa028";
+      ctx.fillRect(cx - 3, cy - 4, 6, 8);
+      ctx.fillRect(cx - 4, cy - 2, 8, 4);
+      ctx.fillRect(cx + tailDir * 4 - 1, cy - 1, 2, 2);
+
+      ctx.fillStyle = "#fff8a8";
+      ctx.fillRect(cx + frontDir - 2, cy - 1, 3, 3);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(cx + frontDir - 1, cy - 1, 2, 2);
+    }
+
     draw(world) {
       this.ensureCanvasSize(world);
       this.updateCamera(world);
@@ -587,6 +662,9 @@
         }
       }
       this.drawActor(world.mario, this.marioSprites, w, world);
+      if (world.fireball) {
+        this.drawFireball(world.fireball);
+      }
 
       // 爆風・崩落煙エフェクト
       if (world.explosions) {
@@ -1050,6 +1128,7 @@
 
       const ctx = this.ctx;
       const isBack = !!enemy.isBack;
+      const isFast = enemy.enemyType === "spanagonFast";
       const col = isBack
         ? {
             outline: "#121828",
@@ -1060,15 +1139,25 @@
             eyeWhite: "#687898",
             eyePupil: "#384460"
           }
-        : {
-            outline: "#184c5c",
-            body: "#36b8c8",
-            highlight: "#7cf0f8",
-            horn: "#ffe060",
-            arm: "#2890a0",
-            eyeWhite: "#ffffff",
-            eyePupil: "#e03030"
-          };
+        : isFast
+          ? {
+              outline: "#0b2a38",
+              body: "#197286",
+              highlight: "#3fa4ba",
+              horn: "#d4982a",
+              arm: "#145364",
+              eyeWhite: "#dce6ee",
+              eyePupil: "#cc2222"
+            }
+          : {
+              outline: "#184c5c",
+              body: "#36b8c8",
+              highlight: "#7cf0f8",
+              horn: "#ffe060",
+              arm: "#2890a0",
+              eyeWhite: "#ffffff",
+              eyePupil: "#e03030"
+            };
 
       if (enemy.state === 15 || enemy.state === 16) {
         const f = world ? world.f : 0;
@@ -1138,7 +1227,7 @@
         ctx.translate(-(drawX + 8), -(drawY + 11));
       }
 
-      // 二本足の仮ドット描画（表はシアン系、裏は暗いシルエット）
+      // 二本足の仮ドット描画（通常スパナは明るめシアン、高速色違いはやや濃いシアン、裏は暗いシルエット）
       ctx.fillStyle = col.outline;
       ctx.fillRect(drawX + 3, drawY + 3, 10, 12);
       ctx.fillStyle = col.body;
