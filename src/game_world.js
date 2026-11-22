@@ -50,6 +50,9 @@
       this.doorMap = new Map();
       this.spikeAggressive = !!config.spikeAggressive;
       this.marioHitEnemy = false;
+      this.allBackStop = false;
+      this.allBackTimer = 0;
+      this.allBackDone = false;
 
       const stepper = new ActorStepper();
       this.stepper = stepper;
@@ -565,6 +568,7 @@
 
     // ROM $D4A1 + $D58A 準拠: マリオと有効な表側ザコ敵の接触判定
     isMarioEnemyHit(mario, enemy) {
+      if (this.allBackStop) return false;
       if (mario.flag & 0x08) return false;
       if (mario.state === 7 || mario.state === 10 || mario.state === 11 ||
           mario.state === 15 || mario.state === 16) {
@@ -601,6 +605,53 @@
       }
     }
 
+    // ROM $DBCB 〜 $DC2A 準拠: 敵全員が裏側かつドア出入り中でない時、512F停止演出
+    updateAllBackStop() {
+      if (this.allBackStop) {
+        this.holdDoorsOpen();
+        if ((this.f & 0x03) === 0) {
+          this.allBackTimer -= 1;
+          if (this.allBackTimer <= 0) {
+            this.allBackStop = false;
+            this.allBackTimer = 0;
+            this.allBackDone = true;
+          }
+        }
+        return;
+      }
+
+      if (!this.enemies || this.enemies.length < 2) {
+        this.allBackStop = false;
+        this.allBackTimer = 0;
+        this.allBackDone = false;
+        return;
+      }
+
+      let allInBackAndNotDoor = true;
+      for (let i = 0; i < this.enemies.length; i++) {
+        const e = this.enemies[i];
+        if (!e.isBack || e.state === 3) {
+          allInBackAndNotDoor = false;
+          break;
+        }
+      }
+
+      if (!allInBackAndNotDoor) {
+        this.allBackStop = false;
+        this.allBackTimer = 0;
+        this.allBackDone = false;
+        return;
+      }
+
+      if (this.allBackDone) {
+        return;
+      }
+
+      this.allBackStop = true;
+      this.allBackTimer = 0x80;
+      this.openAllDoors(true, 0x20);
+    }
+
     step(inputBits = 0) {
       let b = inputBits;
       if ((b & (LEFT | RIGHT)) === (LEFT | RIGHT)) {
@@ -615,15 +666,18 @@
       this.mario.prevHammer = hammerNow;
       this.mario.bits = (b & ~HAMMER) | (hammerEdge ? HAMMER : 0);
 
+      this.updateAllBackStop();
       this.stepper.step(this.mario, this);
 
-      if (this.f % 2 === 1) {
-        this.spikeAI.update(this);
-      }
-      this.updateSpikeHammer();
-      this.stepper.step(this.spike, this);
-      if (this.enemyAI && this.enemies.length > 0) {
-        this.enemyAI.updateAll(this);
+      if (!this.allBackStop) {
+        if (this.f % 2 === 1) {
+          this.spikeAI.update(this);
+        }
+        this.updateSpikeHammer();
+        this.stepper.step(this.spike, this);
+        if (this.enemyAI && this.enemies.length > 0) {
+          this.enemyAI.updateAll(this);
+        }
       }
 
       this.updateEffectsAndWaves();

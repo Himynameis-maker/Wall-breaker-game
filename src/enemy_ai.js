@@ -33,13 +33,17 @@
   // State 4 加速テーブル（ROM $D10A 準拠: speedMask の 1bit数 1..8 に対応）
   const ENEMY_ACCEL_TABLE = [0x11, 0x25, 0x55, 0xb5, 0xee, 0xfe, 0xff, 0xff];
 
+  // State 3 ドア出入り用オフセットテーブル（ROM $D055, $D067 準拠）
+  const ENEMY_DOOR_RELY = [32, 32, 32, 30, 29, 29, 28, 28, 0, 28, 28, 29, 29, 30, 32, 32, 32, -1];
+  const ENEMY_DOOR_STAGE = [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3];
+
   class EnemyActor {
     constructor(cfg = {}) {
       this.isMario = false;
       this.isEnemy = true;
       this.enemyType = cfg.enemyType || "spanagon";
       this.isBack = !!cfg.isBack;
-      this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 4:ダウン後硬直/加速, 5:穴落ち, 10:ダウン落下, 15:ドラム缶捕獲待機, 16:ドラム缶閉じ込め
+      this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 3:ドア出入り, 4:ダウン後硬直/加速, 5:穴落ち, 10:ダウン落下, 15:ドラム缶捕獲待機, 16:ドラム缶閉じ込め
       this.x = cfg.x != null ? cfg.x : 0;
       this.y = cfg.y != null ? cfg.y : 64;
       this.dir = cfg.dir != null ? cfg.dir : LEFT;
@@ -57,6 +61,7 @@
       this.stopTimer = 0;
       this.ladderStage = 0;
       this.isLadderPose = false;
+      this.doorStage = 0;
       this.animCount = 0;
     }
   }
@@ -119,6 +124,7 @@
       slot.flag &= ~0x02;
       slot.isLadderPose = false;
       slot.ladderStage = 0;
+      slot.doorStage = 0;
     }
 
     // $C8BB 相当: 落下中ドラム缶 ($0D) による閉じ込め捕獲＆隣セル押し戻し
@@ -138,6 +144,7 @@
         slot.stopTimer = 0;
         slot.isLadderPose = false;
         slot.ladderStage = 0;
+        slot.doorStage = 0;
         this.snapX(slot, world);
         this.snapY(slot);
         this.updateCR(slot, world);
@@ -182,11 +189,9 @@
             }
           } else if (ex.kind === "wall") {
             const attackerSide = ex.byMario ? 0 : 1;
-            if (ex.age < COLLAPSE_HIT_FRAMES) {
-              if (ex.age >= COLLAPSE_HIT_FRAMES - COLLAPSE_STAGE_FRAMES || enemySide !== attackerSide) {
-                this.enterKnockdown(slot);
-                return true;
-              }
+            if (ex.age < COLLAPSE_HIT_FRAMES && enemySide !== attackerSide) {
+              this.enterKnockdown(slot);
+              return true;
             }
           }
         }
@@ -426,6 +431,32 @@
       return true;
     }
 
+    // $CFE0 相当: 全開ドアへの進入判定 → State 3（ドア出入り状態）
+    tryEnterDoor(slot, world) {
+      if ((slot.x & 0x0f) !== 0x0f) return false;
+      if (world.getTile(slot.row, slot.col) !== TILE.DOOR_OPEN) return false;
+
+      if (world.enemies) {
+        for (let i = 0; i < world.enemies.length; i++) {
+          const other = world.enemies[i];
+          if (other !== slot &&
+              other.row === slot.row &&
+              other.col === slot.col &&
+              other.state === 3) {
+            return false;
+          }
+        }
+      }
+
+      slot.state = 3;
+      slot.prom = 0;
+      slot.animCount = 0;
+      slot.topY = slot.y - 32;
+      slot.doorStage = 0;
+      slot.isLadderPose = false;
+      return true;
+    }
+
     // $C4C8 相当: 穴への落下開始
     tryEnterHole(slot, world) {
       if (slot.row >= world.rows - 1) return false;
@@ -443,13 +474,13 @@
       return true;
     }
 
-    resumeWalkFromIdle(slot, world, runThink) {
+    resumeWalkFromIdle(slot, world, runThink, stopIfNoHoriz = false) {
       if (runThink) {
         this.thinkDirection(slot, world);
       }
       let horiz = slot.cmd & (RIGHT | LEFT);
       if (horiz === 0) {
-        if (slot.state === 0) {
+        if (slot.state === 0 && !stopIfNoHoriz) {
           horiz = slot.facing || LEFT;
           slot.cmd = (slot.cmd & ~(RIGHT | LEFT)) | horiz;
         } else {
@@ -476,6 +507,7 @@
 
     stepState0(slot, world) {
       if (this.checkDrumTrap(slot, world)) return;
+      if (this.tryEnterDoor(slot, world)) return;
       this.thinkDirection(slot, world);
       if ((slot.cmd & (RIGHT | LEFT)) === 0) {
         if (this.tryEnemyLadder(slot, world)) return;
@@ -490,6 +522,7 @@
       slot.isLadderPose = false;
       slot.prevCmd = slot.cmd;
       this.checkDrumBlock(slot, world);
+      if (this.tryEnterDoor(slot, world)) return;
       if (this.tryEnemyLadder(slot, world)) return;
       if (this.tryEnterHole(slot, world)) return;
 
@@ -570,6 +603,32 @@
       slot.y = slot.topY + ENEMY_LADDER_RELY[idx];
       slot.animCount = (slot.animCount + 1) & 0xff;
       this.updateCR(slot, world);
+    }
+
+    // $D079 相当: State 3 ドア出入り状態（16Fアニメ + 中間で表裏反転）
+    stepState3(slot, world) {
+      let idx = slot.prom;
+      let relY = ENEMY_DOOR_RELY[idx];
+      if (relY === 0) {
+        slot.isBack = !slot.isBack;
+        idx += 1;
+        slot.prom = idx;
+        relY = ENEMY_DOOR_RELY[idx];
+      }
+      if (relY < 0) {
+        slot.y = slot.topY + 32;
+        slot.prom = 0;
+        slot.state = 0;
+        slot.doorStage = 0;
+        slot.isLadderPose = false;
+        this.updateCR(slot, world);
+        this.resumeWalkFromIdle(slot, world, true, true);
+        return;
+      }
+      slot.y = slot.topY + relY;
+      slot.doorStage = ENEMY_DOOR_STAGE[idx];
+      slot.prom = idx + 1;
+      slot.animCount = (slot.animCount + 1) & 0xff;
     }
 
     // $D0D5 相当: ダウン着地後 96F 硬直 → speedMask を1段階加速して歩行再開
@@ -680,6 +739,10 @@
     }
 
     stepEnemy(slot, world) {
+      if (slot.state === 3) {
+        this.stepState3(slot, world);
+        return;
+      }
       this.updateCR(slot, world);
       if (slot.state === 15) {
         if (world.getTile(slot.row, slot.col) === TILE.DRUM) {
