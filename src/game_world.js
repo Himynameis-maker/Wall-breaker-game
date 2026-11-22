@@ -33,6 +33,14 @@
     EnemyAI
   } = G;
 
+  function normalizeTimedBombSec(sec) {
+    const n = Number(sec);
+    if (n === 15 || n === 30 || n === 45 || n === 60) {
+      return n;
+    }
+    return 30;
+  }
+
   class GameWorld {
     constructor(config = {}) {
       this.cols = config.cols || 16;
@@ -48,6 +56,15 @@
       this.fallingPillars = [];
       this.doors = [];
       this.doorMap = new Map();
+      this.timedBombs = [];
+      this.nextTimedBombId = 1;
+      this.defaultTimedBombSec = normalizeTimedBombSec(config.timedBombSec);
+      this.timedBombOverrideSec = (config.timedBombOverrideSec === 15 ||
+        config.timedBombOverrideSec === 30 ||
+        config.timedBombOverrideSec === 45 ||
+        config.timedBombOverrideSec === 60)
+        ? config.timedBombOverrideSec
+        : null;
       this.spikeAggressive = !!config.spikeAggressive;
       this.marioHitEnemy = false;
       this.marioHitFireball = false;
@@ -67,6 +84,24 @@
 
       if (config.tiles) {
         this.loadTiles(config.tiles);
+      }
+      if (Array.isArray(config.timedBombs)) {
+        for (let i = 0; i < config.timedBombs.length; i++) {
+          const tbCfg = config.timedBombs[i];
+          if (!tbCfg || tbCfg.row == null || tbCfg.col == null) continue;
+          const r = tbCfg.row;
+          const c = this.wrapCol(tbCfg.col);
+          if (r < 0 || r >= this.rows) continue;
+          const sec = normalizeTimedBombSec(tbCfg.sec != null ? tbCfg.sec : this.defaultTimedBombSec);
+          this.setTile(r, c, TILE.TIMED_BOMB);
+          const slot = this.ensureTimedBombSlot(r, c, sec);
+          this.applyTimedBombSec(slot, this.timedBombOverrideSec != null ? this.timedBombOverrideSec : sec);
+        }
+      }
+      if (this.timedBombOverrideSec != null && this.timedBombs.length > 0) {
+        for (let i = 0; i < this.timedBombs.length; i++) {
+          this.applyTimedBombSec(this.timedBombs[i], this.timedBombOverrideSec);
+        }
       }
       if (config.mario) {
         Object.assign(this.mario, config.mario);
@@ -143,6 +178,54 @@
       return this.pillarBreaks.get(this.cellKey(row, col)) || null;
     }
 
+    applyTimedBombSec(tb, sec) {
+      if (!tb) return;
+      const validSec = normalizeTimedBombSec(sec);
+      tb.initialSec = validSec;
+      tb.totalFrames = validSec * 60;
+      tb.remainFrames = validSec * 60;
+    }
+
+    getTimedBombAt(row, col) {
+      const wc = this.wrapCol(col);
+      for (let i = 0; i < this.timedBombs.length; i++) {
+        const tb = this.timedBombs[i];
+        if (!tb.falling && tb.row === row && tb.col === wc) {
+          return tb;
+        }
+      }
+      return null;
+    }
+
+    ensureTimedBombSlot(row, col, sec = this.defaultTimedBombSec) {
+      const wc = this.wrapCol(col);
+      let tb = this.getTimedBombAt(row, wc);
+      if (!tb) {
+        const validSec = normalizeTimedBombSec(sec);
+        tb = {
+          id: this.nextTimedBombId++,
+          row,
+          col: wc,
+          initialSec: validSec,
+          totalFrames: validSec * 60,
+          remainFrames: validSec * 60,
+          falling: false
+        };
+        this.timedBombs.push(tb);
+      }
+      return tb;
+    }
+
+    removeTimedBombSlot(row, col) {
+      const wc = this.wrapCol(col);
+      for (let i = this.timedBombs.length - 1; i >= 0; i--) {
+        const tb = this.timedBombs[i];
+        if (!tb.falling && tb.row === row && tb.col === wc) {
+          this.timedBombs.splice(i, 1);
+        }
+      }
+    }
+
     ensureDoorSlot(row, col) {
       const wc = this.wrapCol(col);
       const key = this.cellKey(row, wc);
@@ -203,6 +286,12 @@
         this.ensureDoorSlot(row, wc);
       } else if (!isDoorRelatedTile(val)) {
         this.removeDoorSlot(row, wc);
+      }
+      if (val === TILE.TIMED_BOMB) {
+        const initSec = this.timedBombOverrideSec != null ? this.timedBombOverrideSec : this.defaultTimedBombSec;
+        this.ensureTimedBombSlot(row, wc, initSec);
+      } else {
+        this.removeTimedBombSlot(row, wc);
       }
     }
 
@@ -376,6 +465,13 @@
         const payload = getPillarFallPayload(aboveTile);
         if (payload !== null) {
           this.crumblingLadders.delete(this.cellKey(aboveRow, c));
+          let fallingTimedBomb = null;
+          if (aboveTile === TILE.TIMED_BOMB) {
+            fallingTimedBomb = this.getTimedBombAt(aboveRow, c);
+            if (fallingTimedBomb) {
+              fallingTimedBomb.falling = true;
+            }
+          }
           const isContLadder = (aboveTile === TILE.LADDER || aboveTile === TILE.BREAK_LADDER) &&
             aboveRow >= 1 &&
             isSameLadderType(aboveTile, this.getTile(aboveRow - 1, c));
@@ -391,6 +487,7 @@
             isDrum: aboveTile === TILE.DRUM,
             isFloorOnly: payload === TILE.EMPTY,
             aboveDoneHole: isContLadder ? TILE.HOLE_PILLAR_LAD : TILE.HOLE,
+            timedBomb: fallingTimedBomb,
             stage: 1,
             timer: 30
           });
@@ -437,6 +534,11 @@
           // 42F目 (30 + 4*3): 着地完了
           this.fallingPillars.splice(i, 1);
           this.pillarBreaks.delete(this.cellKey(fp.targetRow, fp.col));
+          if (fp.timedBomb) {
+            fp.timedBomb.row = fp.targetRow;
+            fp.timedBomb.col = fp.col;
+            fp.timedBomb.falling = false;
+          }
           this.setTile(fp.targetRow, fp.col, fp.payloadTile);
           this.setTile(fp.row, fp.col, fp.aboveDoneHole);
         }
@@ -502,6 +604,54 @@
       this.waves.push({ row, col: this.wrapCol(c + 1), dir: 1, timer: 10, stepsLeft: this.cols - 1, byMario: !!byMario });
     }
 
+    triggerTimedBomb(row, col, keepTile = false) {
+      const c = this.wrapCol(col);
+      if (!keepTile) {
+        this.setTile(row, c, TILE.EMPTY);
+      }
+      this.openAllDoors(true, 0x20);
+      this.explosions.push({
+        row,
+        col: c,
+        timer: 26,
+        maxTimer: 26,
+        age: 0,
+        kind: "bomb",
+        byMario: true,
+        indiscriminate: true
+      });
+      this.waves.push({ row, col: this.wrapCol(c - 1), dir: -1, timer: 10, stepsLeft: this.cols - 1, byMario: true });
+      this.waves.push({ row, col: this.wrapCol(c + 1), dir: 1, timer: 10, stepsLeft: this.cols - 1, byMario: true });
+    }
+
+    updateTimedBombs() {
+      if (this.timedBombs.length === 0) return;
+      for (let i = this.timedBombs.length - 1; i >= 0; i--) {
+        const tb = this.timedBombs[i];
+        tb.remainFrames -= 1;
+        if (tb.remainFrames > 0) continue;
+
+        this.timedBombs.splice(i, 1);
+        if (tb.falling) {
+          let expRow = tb.row;
+          for (let j = 0; j < this.fallingPillars.length; j++) {
+            const fp = this.fallingPillars[j];
+            if (fp.timedBomb === tb) {
+              expRow = fp.stage >= 2 ? fp.targetRow : fp.row;
+              fp.payloadTile = TILE.EMPTY;
+              fp.origAboveTile = TILE.EMPTY;
+              fp.isFloorOnly = true;
+              fp.timedBomb = null;
+              break;
+            }
+          }
+          this.triggerTimedBomb(expRow, tb.col, true);
+        } else {
+          this.triggerTimedBomb(tb.row, tb.col, false);
+        }
+      }
+    }
+
     updateEffectsAndWaves() {
       this.updateDoors();
       this.updateCrumblingLadders();
@@ -536,7 +686,7 @@
         }
 
         const t = this.getTile(w.row, w.col);
-        if (isDoorRelatedTile(t)) {
+        if (isDoorRelatedTile(t) || t === TILE.TIMED_BOMB) {
           if (w.stepsLeft > 1) {
             nextWaves.push({
               row: w.row,
@@ -582,7 +732,7 @@
       }
 
       const tile = this.getTile(sp.row, sp.col);
-      if (tile === TILE.BOMB || !isBreakableTile(tile)) return;
+      if (tile === TILE.BOMB || tile === TILE.TIMED_BOMB || !isBreakableTile(tile)) return;
 
       const sameCell = sp.row === ma.row && sp.col === ma.col;
       if (tile === TILE.DOOR || sameCell || this.spikeAggressive) {
@@ -850,6 +1000,9 @@
       this.mario.bits = (b & ~HAMMER) | (hammerEdge ? HAMMER : 0);
 
       this.updateAllBackStop();
+      if (!this.allBackStop) {
+        this.updateTimedBombs();
+      }
       this.stepper.step(this.mario, this);
 
       if (!this.allBackStop) {
