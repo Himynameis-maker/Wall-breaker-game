@@ -167,12 +167,14 @@
           const ex = world.explosions[i];
           if (ex.col !== slot.col || ex.row !== checkRow) continue;
           if (ex.kind === "bomb") {
-            if (ex.age >= 21 || ex.byMario !== slot.isMario) {
+            const attackerSide = ex.byMario ? 0 : 1;
+            if (ex.age >= 21 || this.getActorSide(slot) !== attackerSide) {
               this.enterKnockdown(slot);
               return true;
             }
           } else if (ex.kind === "wall") {
-            if (ex.age < COLLAPSE_HIT_FRAMES && ex.byMario !== slot.isMario) {
+            const attackerSide = ex.byMario ? 0 : 1;
+            if (ex.age < COLLAPSE_HIT_FRAMES && this.getActorSide(slot) !== attackerSide) {
               this.enterKnockdown(slot);
               return true;
             }
@@ -194,9 +196,12 @@
 
       if (world.pillarBreaks.size > 0 && !(slot.flag & 2)) {
         const pInfo = world.getPillarBreakInfo(checkRow, slot.col);
-        if (pInfo && pInfo.stage >= 2 && pInfo.byMario !== slot.isMario) {
-          this.enterKnockdown(slot);
-          return true;
+        if (pInfo && pInfo.stage >= 2) {
+          const attackerSide = pInfo.byMario ? 0 : 1;
+          if (this.getActorSide(slot) !== attackerSide) {
+            this.enterKnockdown(slot);
+            return true;
+          }
         }
       }
 
