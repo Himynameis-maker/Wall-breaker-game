@@ -75,6 +75,14 @@
       this.allBackDone = false;
       this.fireballEnabled = config.fireball !== false;
       this.fireballFast = !!config.fireballFast;
+      this.stageNumber = (Number.isFinite(Number(config.stageNumber)) && Number(config.stageNumber) > 0)
+        ? Math.floor(Number(config.stageNumber))
+        : 1;
+      this.introTotalFrames = 288;
+      this.introActive = !config.skipIntro;
+      this.introFrame = 0;
+      this.startBannerTimer = 0;
+      this.snapCameraRequested = false;
 
       const stepper = new ActorStepper();
       this.stepper = stepper;
@@ -1000,6 +1008,27 @@
       const hammerNow = (b & HAMMER) !== 0;
       const hammerEdge = hammerNow && !this.mario.prevHammer;
       this.mario.prevHammer = hammerNow;
+
+      if (this.introActive) {
+        if (hammerEdge) {
+          this.introActive = false;
+          this.introFrame = this.introTotalFrames;
+          this.startBannerTimer = 72;
+          this.snapCameraRequested = true;
+        } else {
+          this.introFrame += 1;
+          if (this.introFrame >= this.introTotalFrames) {
+            this.introActive = false;
+            this.startBannerTimer = 72;
+          }
+        }
+        return;
+      }
+
+      if (this.startBannerTimer > 0) {
+        this.startBannerTimer -= 1;
+      }
+
       this.mario.bits = (b & ~HAMMER) | (hammerEdge ? HAMMER : 0);
 
       this.updateAllBackStop();
