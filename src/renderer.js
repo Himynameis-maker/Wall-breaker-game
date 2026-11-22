@@ -41,22 +41,6 @@
   const INTRO_START_CAM_Y = -122;
   const INTRO_GROUND_OVERSHOOT = 64;
 
-  const S = root.WreckSprites || {};
-  const {
-    PALETTE_WORKER,
-    PALETTE_SPIKE,
-    PLAYER_IDLE,
-    PLAYER_WALK1,
-    PLAYER_WALK2,
-    PLAYER_CLIMB1,
-    PLAYER_CLIMB2,
-    SPIKE_IDLE,
-    SPIKE_WALK1,
-    SPIKE_WALK2,
-    SPIKE_CLIMB1,
-    SPIKE_CLIMB2
-  } = S;
-
   const PIXEL_FONT = {
     A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
     B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
@@ -137,26 +121,11 @@
       this.isIntroCamMoving = false;
       this.bannerCache = new Map();
 
-      this.marioSprites = makeSpriteSet(
-        {
-          idle: PLAYER_IDLE,
-          walk1: PLAYER_WALK1,
-          walk2: PLAYER_WALK2,
-          climb1: PLAYER_CLIMB1,
-          climb2: PLAYER_CLIMB2
-        },
-        PALETTE_WORKER
-      );
-      this.spikeSprites = makeSpriteSet(
-        {
-          idle: SPIKE_IDLE,
-          walk1: SPIKE_WALK1,
-          walk2: SPIKE_WALK2,
-          climb1: SPIKE_CLIMB1,
-          climb2: SPIKE_CLIMB2
-        },
-        PALETTE_SPIKE
-      );
+      this.marioSprites = {};
+      this.spikeSprites = {};
+      if (typeof this.initActorSprites === "function") {
+        this.initActorSprites();
+      }
       this.wireFencePattern = this.makeWireFencePattern();
       this.floorBlockPattern = this.makeFloorBlockPattern();
     }
@@ -186,16 +155,20 @@
       c.width = 8;
       c.height = 8;
       const g = c.getContext("2d");
+      // 8x8 正方形の青ブロック（立体縁取り＋内側デザイン入り）
       g.fillStyle = "#1e4498";
       g.fillRect(0, 0, 8, 8);
+      // 上・左のハイライト
       g.fillStyle = "#4278d8";
       g.fillRect(0, 0, 7, 1);
       g.fillRect(0, 0, 1, 7);
       g.fillStyle = "#78a8ff";
       g.fillRect(0, 0, 1, 1);
+      // 下・右の暗影（目地）
       g.fillStyle = "#0c183c";
       g.fillRect(0, 7, 8, 1);
       g.fillRect(7, 0, 1, 8);
+      // 内側のちょっとした凹凸デザイン
       g.fillStyle = "#142e72";
       g.fillRect(2, 2, 4, 1);
       g.fillRect(2, 2, 1, 4);
@@ -395,11 +368,13 @@
     }
 
     drawRoof(ctx, w) {
+      // 天井の屋根（平べったい台形シルエット＋ブロック模様：y = -9 .. 6、下端6pxで1段目の縦幅を他段と統一）
       ctx.fillStyle = "#1e4498";
       ctx.fillRect(10, -9, Math.max(0, w - 20), 2);
       ctx.fillRect(6, -7, Math.max(0, w - 12), 3);
       ctx.fillRect(2, -4, Math.max(0, w - 4), 4);
 
+      // 上面の明るいハイライト＆肩の縁
       ctx.fillStyle = "#689cff";
       ctx.fillRect(10, -9, Math.max(0, w - 20), 1);
       ctx.fillRect(6, -7, 4, 1);
@@ -409,6 +384,7 @@
       ctx.fillRect(w - 6, -4, 4, 1);
       ctx.fillRect(10, -8, Math.max(0, w - 20), 1);
 
+      // 屋根の縦目地・デザインリブ（8px単位で屋根瓦／板金風）
       for (let x = 8; x < w - 8; x += 8) {
         const topY = (x >= 10 && x < w - 10) ? -8 : -6;
         ctx.fillStyle = "#0c183c";
@@ -417,6 +393,7 @@
         ctx.fillRect(x + 1, topY, 1, -topY);
       }
 
+      // 屋根上部の平べったい装飾凹み（16px単位）
       for (let x = 16; x < w - 24; x += 16) {
         ctx.fillStyle = "#142e72";
         ctx.fillRect(x + 4, -5, 8, 2);
@@ -424,6 +401,7 @@
         ctx.fillRect(x + 4, -3, 8, 1);
       }
 
+      // 軒先の横桁・平べったい青ブロック帯（y = 0 .. 6、他段鉄骨と同じ6px厚）
       ctx.fillStyle = "#1e4498";
       ctx.fillRect(0, 0, w, 6);
       ctx.fillStyle = "#4278d8";
@@ -455,6 +433,7 @@
       ctx.save();
       ctx.translate(0, -camOffset);
 
+      // 画面端2マス（左右合計4マス）の背景金網グラフィック（明るめグレー）
       if (world.cols > EDGE_SAFE_COLS * 2 && this.wireFencePattern) {
         const edgeW = EDGE_SAFE_COLS * 16;
         const fenceTop = 6;
@@ -468,10 +447,12 @@
         ctx.restore();
       }
 
+      // 左右端ループゾーンの目印（ごく薄いガイド線）
       ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
       ctx.fillRect(0, 6, 1, Math.max(0, world.rows * 32 - 6));
       ctx.fillRect(w - 1, 6, 1, Math.max(0, world.rows * 32 - 6));
 
+      // 画面外の天井（平べったい青屋根）と画面外の床（小さい正方形の青ブロック）
       this.drawRoof(ctx, w);
       if (this.floorBlockPattern) {
         const floorBottomStartY = world.rows * 32 + 6;
@@ -486,6 +467,7 @@
         }
       }
 
+      // 床（穴・落下開始穴 $0C および同種連続はしごの中間以外は鉄骨を描画、最下段は常に足場あり）
       for (let row = 0; row < world.rows; row++) {
         const floorY = (row + 1) * 32;
         const isBottomRow = row === world.rows - 1;
@@ -524,6 +506,7 @@
         }
       }
 
+      // マップタイル
       for (let row = 0; row < world.rows; row++) {
         const yTop = row * 32;
         for (let col = 0; col < world.cols; col++) {
@@ -532,8 +515,10 @@
         }
       }
 
+      // 鉄柱の滞空・落下オブジェクト＋白い床板
       this.drawFallingPillars(ctx, world);
 
+      // 破壊破片エフェクト
       if (world.breakEffects) {
         for (const ef of world.breakEffects) {
           const t = ef.maxTimer - ef.timer;
@@ -567,6 +552,7 @@
         this.drawFireball(world.fireball);
       }
 
+      // 爆風・崩落煙エフェクト
       if (world.explosions) {
         for (const ex of world.explosions) {
           const cx = ex.col * 16 + 8;
@@ -633,9 +619,9 @@
     }
   }
 
-  root.WreckRender = {
+  root.WreckRender = Object.assign(root.WreckRender || {}, {
     Renderer,
     bakeSprite,
     makeSpriteSet
-  };
+  });
 })(typeof globalThis !== "undefined" ? globalThis : window);
