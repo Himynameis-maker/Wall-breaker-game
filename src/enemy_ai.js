@@ -204,7 +204,7 @@
           if (ex.col !== slot.col || ex.row !== checkRow) continue;
           if (ex.kind === "bomb") {
             const attackerSide = ex.byMario ? 0 : 1;
-            if (ex.age >= 21 || enemySide !== attackerSide) {
+            if (ex.indiscriminate || ex.age >= 21 || enemySide !== attackerSide) {
               this.enterKnockdown(slot);
               return true;
             }
