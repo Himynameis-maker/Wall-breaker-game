@@ -22,6 +22,7 @@
     WALL_2: 0x92,
     WALL_3: 0xa3,
     BOMB: 0xb1,
+    TIMED_BOMB: 0xb2,
     BREAK_LADDER: 0xd1,
     DOOR: 0xe1,
     PILLAR: 0xf1
@@ -45,6 +46,22 @@
     }
     return { totalFrames: 27, hitFrame: 14, recoverStart: 23 };
   });
+
+  // 時計針の12段階ドット座標（0=12時, 1=1時, ..., 6=6時, ..., 9=9時, ..., 11=11時）
+  const TIMED_BOMB_HANDS = [
+    [[0, -1], [0, -2], [0, -3], [0, -4], [0, -5]],
+    [[0, -1], [1, -2], [1, -3], [2, -4]],
+    [[1, 0], [2, -1], [3, -1], [4, -2]],
+    [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0]],
+    [[1, 0], [2, 1], [3, 1], [4, 2]],
+    [[0, 1], [1, 2], [1, 3], [2, 4]],
+    [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]],
+    [[0, 1], [-1, 2], [-1, 3], [-2, 4]],
+    [[-1, 0], [-2, 1], [-3, 1], [-4, 2]],
+    [[-1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0]],
+    [[-1, 0], [-2, -1], [-3, -1], [-4, -2]],
+    [[0, -1], [-1, -2], [-1, -3], [-2, -4]]
+  ];
 
   const S = root.WreckSprites || {};
   const {
@@ -433,6 +450,84 @@
       ctx.fillRect(x + 7, yTop + 21, 3, 4);
     }
 
+    drawTimedBomb(ctx, x, yTop, tb, frame) {
+      // 残り10.0秒(600F)以下から0.5秒(30F)ごとに赤点滅（10s赤 -> 9.5s通常 -> 9.0s赤...）
+      const isRedBlink = !!(tb && tb.remainFrames <= 600 && (Math.floor((600 - tb.remainFrames) / 30) % 2 === 0));
+      // 針の向き（5秒=300Fごとに1段階反時計回り: 60s=12時, 45s=9時, 30s=6時, 15s=3時, 0s=12時）
+      const step = tb ? (Math.ceil(Math.max(1, tb.remainFrames) / 300) % 12) : 6;
+      const handDots = TIMED_BOMB_HANDS[step] || TIMED_BOMB_HANDS[0];
+
+      const bodyDark = isRedBlink ? "#6e1010" : "#1c2336";
+      const bodyMid = isRedBlink ? "#d42820" : "#344262";
+      const bodyLight = isRedBlink ? "#ff6850" : "#5e749c";
+      const bezelColor = isRedBlink ? "#e02018" : "#2e3c54";
+      const bezelHi = isRedBlink ? "#ff8870" : "#7c94bc";
+      const faceBg = isRedBlink ? "#ffc4c4" : "#f4f6fc";
+      const tickColor = isRedBlink ? "#901818" : "#54627c";
+      const handColor = isRedBlink ? "#5a0606" : "#141a28";
+      const pinColor = isRedBlink ? "#ff2020" : "#e03028";
+
+      // 爆弾本体（下部のベース筐体）
+      ctx.fillStyle = bodyDark;
+      ctx.fillRect(x + 2, yTop + 20, 12, 11);
+      ctx.fillRect(x + 1, yTop + 22, 14, 8);
+      ctx.fillStyle = bodyMid;
+      ctx.fillRect(x + 3, yTop + 21, 9, 9);
+      ctx.fillStyle = bodyLight;
+      ctx.fillRect(x + 3, yTop + 22, 2, 6);
+
+      // 警告バンド＆リベット
+      ctx.fillStyle = isRedBlink ? "#ffe868" : "#e89828";
+      ctx.fillRect(x + 4, yTop + 26, 8, 2);
+      ctx.fillStyle = isRedBlink ? "#ffffff" : "#8094b8";
+      ctx.fillRect(x + 2, yTop + 23, 1, 1);
+      ctx.fillRect(x + 13, yTop + 23, 1, 1);
+
+      // 時計上部の小さなボタン・竜頭
+      ctx.fillStyle = bezelHi;
+      ctx.fillRect(x + 7, yTop + 3, 3, 2);
+
+      // 大きめのアナログ時計 外枠（15×15px: 中心 cx=x+8, cy=yTop+12）
+      const cx = x + 8;
+      const cy = yTop + 12;
+      ctx.fillStyle = bezelColor;
+      ctx.fillRect(cx - 3, cy - 7, 7, 15);
+      ctx.fillRect(cx - 5, cy - 6, 11, 13);
+      ctx.fillRect(cx - 6, cy - 5, 13, 11);
+      ctx.fillRect(cx - 7, cy - 3, 15, 7);
+
+      // 時計ベゼル上部のハイライト
+      ctx.fillStyle = bezelHi;
+      ctx.fillRect(cx - 3, cy - 7, 7, 1);
+      ctx.fillRect(cx - 5, cy - 6, 2, 1);
+      ctx.fillRect(cx + 4, cy - 6, 2, 1);
+
+      // 内側の文字盤（直径13pxの丸型）
+      ctx.fillStyle = faceBg;
+      ctx.fillRect(cx - 3, cy - 6, 7, 13);
+      ctx.fillRect(cx - 4, cy - 5, 9, 11);
+      ctx.fillRect(cx - 5, cy - 4, 11, 9);
+      ctx.fillRect(cx - 6, cy - 3, 13, 7);
+
+      // 12時（赤目盛）・3時・6時・9時の目盛ドット
+      ctx.fillStyle = "#e02420";
+      ctx.fillRect(cx, cy - 6, 1, 1);
+      ctx.fillStyle = tickColor;
+      ctx.fillRect(cx + 6, cy, 1, 1);
+      ctx.fillRect(cx, cy + 6, 1, 1);
+      ctx.fillRect(cx - 6, cy, 1, 1);
+
+      // 時計の針（5秒ごとの12段階）
+      ctx.fillStyle = handColor;
+      for (let i = 0; i < handDots.length; i++) {
+        ctx.fillRect(cx + handDots[i][0], cy + handDots[i][1], 1, 1);
+      }
+
+      // 針の中心ピン
+      ctx.fillStyle = pinColor;
+      ctx.fillRect(cx, cy, 1, 1);
+    }
+
     drawTileAt(ctx, x, yTop, val, world) {
       if (val === TILE.EMPTY || isHoleTile(val) || val === TILE.HOLE_FALLING || val === TILE.DRUM_FALLING) {
         return;
@@ -470,6 +565,11 @@
         this.drawDrum(ctx, x, yTop);
       } else if (val === TILE.BOMB) {
         this.drawBomb(ctx, x, yTop, world.f);
+      } else if (val === TILE.TIMED_BOMB) {
+        const row = Math.floor(yTop / 32);
+        const col = Math.floor(x / 16);
+        const tb = world.getTimedBombAt ? world.getTimedBombAt(row, col) : null;
+        this.drawTimedBomb(ctx, x, yTop, tb, world.f);
       } else if ((val & 0x80) !== 0) {
         this.drawBreakableWall(ctx, x, yTop, val);
       }
@@ -492,7 +592,11 @@
         ctx.fillRect(x + 2, floorY + 3, 12, 2);
 
         if (!fp.isFloorOnly) {
-          this.drawTileAt(ctx, x, yTop, fp.origAboveTile, world);
+          if (fp.origAboveTile === TILE.TIMED_BOMB && fp.timedBomb) {
+            this.drawTimedBomb(ctx, x, yTop, fp.timedBomb, world.f);
+          } else {
+            this.drawTileAt(ctx, x, yTop, fp.origAboveTile, world);
+          }
         }
       }
     }
