@@ -605,6 +605,40 @@
       }
     }
 
+    // ROM $D50B〜$D57E + $D58A 準拠: 同陣営ザコ敵同士（表同士・裏同士）の接触判定
+    updateEnemyCollisions() {
+      if (!this.enemies || this.enemies.length < 2) return;
+      const halfW = this.worldWidth / 2;
+      for (let i = 0; i < this.enemies.length; i++) {
+        const a = this.enemies[i];
+        if (a.state === 2 || a.state === 4 || a.state === 10 ||
+            a.state === 13 || a.state === 15 || a.state === 16) {
+          continue;
+        }
+        for (let j = i + 1; j < this.enemies.length; j++) {
+          const b = this.enemies[j];
+          if (!!a.isBack !== !!b.isBack) continue;
+          if (b.state === 2 || b.state === 4 || b.state === 10 ||
+              b.state === 13 || b.state === 15 || b.state === 16) {
+            continue;
+          }
+
+          let dx = a.x - b.x;
+          if (dx >= halfW) dx -= this.worldWidth;
+          if (dx < -halfW) dx += this.worldWidth;
+          const absDx = dx >= 0 ? dx : (-dx - 1);
+          if (absDx >= 8) continue;
+
+          const dy = a.y - b.y;
+          const absDy = dy >= 0 ? dy : (-dy - 1);
+          if (absDy >= 8) continue;
+
+          a.bumpTrigger = true;
+          b.bumpTrigger = true;
+        }
+      }
+    }
+
     // ROM $DBCB 〜 $DC2A 準拠: 敵全員が裏側かつドア出入り中でない時、512F停止演出
     updateAllBackStop() {
       if (this.allBackStop) {
@@ -670,6 +704,7 @@
       this.stepper.step(this.mario, this);
 
       if (!this.allBackStop) {
+        this.updateEnemyCollisions();
         if (this.f % 2 === 1) {
           this.spikeAI.update(this);
         }
