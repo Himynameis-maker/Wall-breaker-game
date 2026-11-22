@@ -15,6 +15,7 @@
   const TILE = {
     EMPTY: 0x00,
     LADDER: 0x01,
+    SAND_LADDER: 0x02,     // 砂嵐ハシゴ（プレイヤーは掴めず上からも落ちる・敵は利用可・壊せない）
     DOOR_OPEN: 0x04,       // ドア全開（敵入出可・ダウン判定なし）
     DOOR_CLOSING_1: 0x05,  // ドア閉じかけ1
     DOOR_CLOSING_2: 0x07,  // ドア閉じかけ2
@@ -53,7 +54,7 @@
   }
 
   function isLadderTile(t) {
-    return t === TILE.LADDER || t === TILE.BREAK_LADDER;
+    return t === TILE.LADDER || t === TILE.BREAK_LADDER || t === TILE.SAND_LADDER;
   }
 
   function isCrumblingLadderTile(t) {
@@ -77,7 +78,8 @@
 
   function isSameLadderType(t1, t2) {
     return (t1 === TILE.LADDER && t2 === TILE.LADDER) ||
-      (t1 === TILE.BREAK_LADDER && t2 === TILE.BREAK_LADDER);
+      (t1 === TILE.BREAK_LADDER && t2 === TILE.BREAK_LADDER) ||
+      (t1 === TILE.SAND_LADDER && t2 === TILE.SAND_LADDER);
   }
 
   function isHoleTile(t) {
@@ -94,7 +96,10 @@
 
   function getPillarFallPayload(aboveTile) {
     if (aboveTile === TILE.EMPTY) return TILE.EMPTY;
-    if (aboveTile === TILE.LADDER || aboveTile === TILE.BREAK_LADDER || aboveTile === TILE.DRUM) {
+    if (aboveTile === TILE.LADDER ||
+        aboveTile === TILE.BREAK_LADDER ||
+        aboveTile === TILE.SAND_LADDER ||
+        aboveTile === TILE.DRUM) {
       return aboveTile;
     }
     if (aboveTile === TILE.BOMB ||
