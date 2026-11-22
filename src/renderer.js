@@ -358,7 +358,7 @@
         this.bannerCache.clear();
       }
 
-      const scale = 1;
+      const scale = 2;
       const pad = 5;
       const cols = Math.max(1, str.length * 6 - 1);
       const rows = 7;
