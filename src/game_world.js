@@ -87,6 +87,7 @@
       const stepper = new ActorStepper();
       this.stepper = stepper;
       this.mario = new Actor(true);
+      this.mario.walkFrames = 0;
       this.spike = new Actor(false);
       this.spikeAI = new SpikeAI();
       this.enemies = [];
@@ -1036,6 +1037,11 @@
         this.updateTimedBombs();
       }
       this.stepper.step(this.mario, this);
+      if (this.mario.state === 1) {
+        this.mario.walkFrames = (this.mario.walkFrames || 0) + 1;
+      } else {
+        this.mario.walkFrames = 0;
+      }
 
       if (!this.allBackStop) {
         this.updateEnemyCollisions();
