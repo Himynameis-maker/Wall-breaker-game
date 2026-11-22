@@ -152,6 +152,7 @@
   <div class="topbar">
     <div class="btn-row">
       <select id="stageSelect" aria-label="ステージ選択">
+        <option value="sandLadderDemo">砂嵐ハシゴテスト（16×8）</option>
         <option value="timedBombDemo">時限爆弾テスト（16×8）</option>
         <option value="enemyDemo">敵・火の玉テスト（16×8）</option>
         <option value="doorDemo">ドア＆爆弾連動テスト（16×8）</option>
@@ -254,7 +255,7 @@
       }
 
       function createStage() {
-        const cfg = STAGES[stageSelect.value] || STAGES.timedBombDemo;
+        const cfg = STAGES[stageSelect.value] || STAGES.sandLadderDemo;
         const tbVal = Number(timedBombSecSelect.value);
         const timedBombOverrideSec = (tbVal === 15 || tbVal === 30 || tbVal === 45 || tbVal === 60) ? tbVal : null;
         world = new GameWorld({
