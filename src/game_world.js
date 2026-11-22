@@ -22,6 +22,7 @@
     TILE,
     isBreakableTile,
     isClearTargetTile,
+    isLadderTile,
     isCrumblingLadderTile,
     isDoorRelatedTile,
     isSameLadderType,
@@ -472,7 +473,7 @@
               fallingTimedBomb.falling = true;
             }
           }
-          const isContLadder = (aboveTile === TILE.LADDER || aboveTile === TILE.BREAK_LADDER) &&
+          const isContLadder = isLadderTile(aboveTile) &&
             aboveRow >= 1 &&
             isSameLadderType(aboveTile, this.getTile(aboveRow - 1, c));
 
