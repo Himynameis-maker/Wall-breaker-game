@@ -26,6 +26,7 @@
     isCrumblingLadderTile,
     isDoorRelatedTile,
     isSameLadderType,
+    isEdgeSafeCol,
     getPillarFallPayload,
     Actor,
     ActorStepper,
@@ -92,7 +93,7 @@
           if (!tbCfg || tbCfg.row == null || tbCfg.col == null) continue;
           const r = tbCfg.row;
           const c = this.wrapCol(tbCfg.col);
-          if (r < 0 || r >= this.rows) continue;
+          if (r < 0 || r >= this.rows || isEdgeSafeCol(c, this.cols)) continue;
           const sec = normalizeTimedBombSec(tbCfg.sec != null ? tbCfg.sec : this.defaultTimedBombSec);
           this.setTile(r, c, TILE.TIMED_BOMB);
           const slot = this.ensureTimedBombSlot(r, c, sec);
@@ -282,13 +283,14 @@
     setTile(row, col, val) {
       if (row < 0 || row >= this.rows) return;
       const wc = this.wrapCol(col);
-      this.tiles[row * this.cols + wc] = val;
-      if (val === TILE.DOOR) {
+      const safeVal = isEdgeSafeCol(wc, this.cols) ? TILE.EMPTY : val;
+      this.tiles[row * this.cols + wc] = safeVal;
+      if (safeVal === TILE.DOOR) {
         this.ensureDoorSlot(row, wc);
-      } else if (!isDoorRelatedTile(val)) {
+      } else if (!isDoorRelatedTile(safeVal)) {
         this.removeDoorSlot(row, wc);
       }
-      if (val === TILE.TIMED_BOMB) {
+      if (safeVal === TILE.TIMED_BOMB) {
         const initSec = this.timedBombOverrideSec != null ? this.timedBombOverrideSec : this.defaultTimedBombSec;
         this.ensureTimedBombSlot(row, wc, initSec);
       } else {
