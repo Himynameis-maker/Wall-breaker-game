@@ -6,6 +6,7 @@
   const DOWN = 4;
   const UP = 8;
   const HAMMER = 16;
+  const EDGE_SAFE_COLS = 2;
 
   // 通常壁・鉄柱の共通崩壊フレーム基準 ($B0F1 + $AB6F: stage 5->4->3->2->1->0)
   const COLLAPSE_STAGE_FRAMES = 8;
@@ -94,6 +95,12 @@
     return t === TILE.DRUM;
   }
 
+  function isEdgeSafeCol(col, cols) {
+    if (!cols || cols <= EDGE_SAFE_COLS * 2) return false;
+    const wc = ((col % cols) + cols) % cols;
+    return wc < EDGE_SAFE_COLS || wc >= cols - EDGE_SAFE_COLS;
+  }
+
   function getPillarFallPayload(aboveTile) {
     if (aboveTile === TILE.EMPTY) return TILE.EMPTY;
     if (aboveTile === TILE.LADDER ||
@@ -151,6 +158,7 @@
     DOWN,
     UP,
     HAMMER,
+    EDGE_SAFE_COLS,
     COLLAPSE_STAGE_FRAMES,
     COLLAPSE_TOTAL_FRAMES,
     COLLAPSE_HIT_FRAMES,
@@ -166,6 +174,7 @@
     isHoleTile,
     isFallHoleTile,
     isSolidDrum,
+    isEdgeSafeCol,
     getPillarFallPayload,
     getHammerTiming,
     FALL_TABLE,
