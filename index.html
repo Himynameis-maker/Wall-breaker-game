@@ -152,7 +152,7 @@
   <div class="topbar">
     <div class="btn-row">
       <select id="stageSelect" aria-label="ステージ選択">
-        <option value="enemyDemo">スパナゴン歩行テスト（16×8）</option>
+        <option value="enemyDemo">敵・火の玉テスト（16×8）</option>
         <option value="doorDemo">ドア＆爆弾連動テスト（16×8）</option>
         <option value="pillarDemo">鉄柱＆落下テスト（16×8）</option>
         <option value="hammerDemo">ハンマー＆破壊テスト（16×8）</option>
@@ -252,7 +252,9 @@
           tiles: cfg.tiles,
           mario: cfg.mario,
           spike: cfg.spike,
-          enemies: cfg.enemies
+          enemies: cfg.enemies,
+          fireball: cfg.fireball,
+          fireballFast: cfg.fireballFast
         });
         applyZoomMode();
         renderer.resetCamera(world);
@@ -290,6 +292,32 @@
         return "";
       }
 
+      function enemyKindTag(e) {
+        let tag = "sp";
+        if (e.enemyType === "eggplant") tag = "egg";
+        else if (e.enemyType === "spanagonFast") tag = "spF";
+        return e.isBack ? (tag + "/B") : tag;
+      }
+
+      function fireballLabel(fb, w) {
+        if (!fb) return "FB:OFF";
+        const stopTag = w.allBackStop ? " [STOP]" : "";
+        if (fb.state === 0) {
+          return "FB st:0(出現準備)" + stopTag;
+        }
+        if (fb.state === 1) {
+          return "FB st:1(発生中) rem:" + fb.spawnTimer + "F X:" + fb.x + " Y:" + fb.y + " dir:" + (fb.dir & LEFT ? "L" : "R") + stopTag;
+        }
+        if (fb.state === 2) {
+          return "FB st:2(飛行中) X:" + fb.x + " Y:" + fb.y + " dir:" + (fb.dir & LEFT ? "L" : "R") + stopTag;
+        }
+        if (!fb.disappearDone) {
+          return "FB st:3(消滅中) stage:" + fb.animStage + stopTag;
+        }
+        const remF = Math.max(0, (fb.waitTimer - 1) * 8 + ((8 - (w.f & 7)) & 7));
+        return "FB st:3(待機) wait:" + fb.waitTimer + " (" + remF + "F/" + (remF / 60).toFixed(1) + "s)" + stopTag;
+      }
+
       function renderNow() {
         renderer.draw(world);
         const m = world.mario;
@@ -299,14 +327,17 @@
         const rem = world.countBreakables();
         const doorTotal = world.doors ? world.doors.length : 0;
         const doorOpen = world.doors ? world.doors.filter(d => d.state >= 2).length : 0;
+        const marioHitLabel = world.marioHitFireball
+          ? " [FIRE!]"
+          : (world.marioHitEnemy ? " [HIT!]" : "");
         hudEl.textContent =
           "MAP:" + world.cols + "x" + world.rows + " F:" + world.f + " TGT:" + rem + " DR:" + doorOpen + "/" + doorTotal + " IN:" + dirLabel(inp) + (paused ? " [PAUSE]" : "") + "\n" +
-          "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + (world.marioHitEnemy ? " [HIT!]" : "") + "\n" +
+          "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + marioHitLabel + "\n" +
           "Spike st:" + s.state + " X:" + s.x + " Y:" + s.y + " (" + s.row + "," + s.col + ") f:" + (s.facing & 2 ? "L" : "R") + actorTag(s) + "\n" +
-          "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer;
+          "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer + " | " + fireballLabel(world.fireball, world);
         if (world.enemies && world.enemies.length > 0) {
           hudEl.textContent += "\n" + world.enemies.map((e, idx) =>
-            "E" + idx + " st:" + e.state + " X:" + e.x + " Y:" + e.y + " (" + e.row + "," + e.col + ") f:" + (e.facing & 2 ? "L" : "R") + actorTag(e)
+            "E" + idx + "(" + enemyKindTag(e) + ") st:" + e.state + " X:" + e.x + " Y:" + e.y + " (" + e.row + "," + e.col + ") f:" + (e.facing & 2 ? "L" : "R") + actorTag(e)
           ).join(" | ");
         }
       }
