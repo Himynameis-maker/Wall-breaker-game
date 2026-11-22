@@ -35,18 +35,19 @@
     WALL_2: 0x92,          // 2回壊せる壁
     WALL_3: 0xa3,          // 3回壊せる壁
     BOMB: 0xb1,            // 爆弾
+    TIMED_BOMB: 0xb2,      // 時限爆弾（叩き無効・連鎖通過・素通り可）
     BREAK_LADDER: 0xd1,    // 壊せるはしご
     DOOR: 0xe1,            // ドア（閉：叩ける・素通り可・破壊ターゲット外）
     PILLAR: 0xf1           // 支柱（鉄柱）
   };
 
   function isBreakableTile(t) {
-    return (t & 0x80) !== 0;
+    return (t & 0x80) !== 0 && t !== TILE.TIMED_BOMB;
   }
 
   function isClearTargetTile(t) {
     if ((t & 0x80) === 0) return false;
-    if (t === TILE.BOMB || t === TILE.PILLAR) return false;
+    if (t === TILE.BOMB || t === TILE.TIMED_BOMB || t === TILE.PILLAR) return false;
     if ((t & 0xf0) === 0xe0) return false;
     return true;
   }
@@ -97,6 +98,7 @@
       return aboveTile;
     }
     if (aboveTile === TILE.BOMB ||
+        aboveTile === TILE.TIMED_BOMB ||
         aboveTile === TILE.WALL_1 ||
         aboveTile === TILE.WALL_2 || aboveTile === 0x91 ||
         aboveTile === TILE.WALL_3 || aboveTile === 0xa2 || aboveTile === 0xa1) {
