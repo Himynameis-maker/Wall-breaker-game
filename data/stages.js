@@ -5,6 +5,8 @@
     ? require("../src/constants.js")
     : (root.WreckGame || {});
   const TILE = G.TILE;
+  const RIGHT = G.RIGHT || 1;
+  const LEFT = G.LEFT || 2;
 
   const L = TILE.LADDER;
   const D = TILE.DRUM;
@@ -24,14 +26,14 @@
       tiles: [
         [4, 2, BL], [4, 6, D], [4, 10, BL], [4, 13, BL],
         [5, 2, BL], [5, 5, H], [5, 6, P], [5, 8, DR], [5, 10, BL], [5, 13, BL], [5, 14, D],
-        [6, 4, D], [6, 7, BL], [6, 12, BL],
+        [6, 2, BL], [6, 4, D], [6, 7, BL], [6, 12, BL],
         [7, 0, D], [7, 4, DR], [7, 7, W1], [7, 8, B], [7, 10, L], [7, 12, DR], [7, 15, D]
       ],
       mario: { x: 192, y: 192 },
       spike: { x: 192, y: 64 },
       enemies: [
-        { x: 240, y: 192 },
-        { x: 240, y: 192 }
+        { enemyType: "spanagon", x: 240, y: 192, dir: LEFT },
+        { enemyType: "eggplant", x: 16, y: 192, dir: RIGHT }
       ]
     },
     doorDemo: {
