@@ -23,6 +23,7 @@
 
   const STAGES = {
     sandLadderDemo: {
+      stageNumber: 1,
       cols: 20,
       rows: 8,
       tiles: [
@@ -39,6 +40,7 @@
       ]
     },
     timedBombDemo: {
+      stageNumber: 2,
       cols: 20,
       rows: 8,
       tiles: [
@@ -61,6 +63,7 @@
       ]
     },
     enemyDemo: {
+      stageNumber: 3,
       cols: 20,
       rows: 8,
       tiles: [
@@ -78,6 +81,7 @@
       ]
     },
     doorDemo: {
+      stageNumber: 4,
       cols: 20,
       rows: 8,
       tiles: [
@@ -93,6 +97,7 @@
       spike: { x: 192, y: 224 }
     },
     pillarDemo: {
+      stageNumber: 5,
       cols: 20,
       rows: 8,
       tiles: [
@@ -111,6 +116,7 @@
       spike: { x: 144, y: 224 }
     },
     hammerDemo: {
+      stageNumber: 6,
       cols: 20,
       rows: 8,
       tiles: [
@@ -129,6 +135,7 @@
       spike: { x: 192, y: 192 }
     },
     standard8: {
+      stageNumber: 7,
       cols: 20,
       rows: 8,
       tiles: [
@@ -145,6 +152,7 @@
       spike: { x: 240, y: 64 }
     },
     wide10: {
+      stageNumber: 8,
       cols: 24,
       rows: 10,
       tiles: [
@@ -163,6 +171,7 @@
       spike: { x: 288, y: 64 }
     },
     compact6: {
+      stageNumber: 9,
       cols: 16,
       rows: 6,
       tiles: [
@@ -176,6 +185,7 @@
       spike: { x: 176, y: 64 }
     },
     u6: {
+      stageNumber: 10,
       cols: 20,
       rows: 6,
       tiles: [[1, 7, L]],
