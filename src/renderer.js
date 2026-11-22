@@ -8,6 +8,7 @@
   const TILE = G.TILE || {
     EMPTY: 0x00,
     LADDER: 0x01,
+    SAND_LADDER: 0x02,
     DOOR_OPEN: 0x04,
     DOOR_CLOSING_1: 0x05,
     DOOR_CLOSING_2: 0x07,
@@ -37,7 +38,8 @@
     (t & 0x70) === 0x60);
   const isSameLadderType = G.isSameLadderType || ((a, b) =>
     (a === TILE.LADDER && b === TILE.LADDER) ||
-    (a === TILE.BREAK_LADDER && b === TILE.BREAK_LADDER));
+    (a === TILE.BREAK_LADDER && b === TILE.BREAK_LADDER) ||
+    (a === TILE.SAND_LADDER && b === TILE.SAND_LADDER));
   const getHammerTiming = G.getHammerTiming || (slot => {
     if (slot.isMario) {
       return slot.isGolden
@@ -187,6 +189,42 @@
         ctx.fillRect(x + 6, yTop + 23, 4, 2);
         ctx.fillRect(x + 2, yTop + 26, 3, 3);
       }
+    }
+
+    drawSandLadder(ctx, x, yTop, frame) {
+      ctx.save();
+      // 半透明の砂色ハシゴ本体
+      ctx.globalAlpha = 0.52;
+      ctx.fillStyle = "#b89858";
+      ctx.fillRect(x + 2, yTop, 2, 32);
+      ctx.fillRect(x + 12, yTop, 2, 32);
+      ctx.fillStyle = "#e6ca86";
+      for (let ry = 3; ry < 32; ry += 6) {
+        ctx.fillRect(x + 2, yTop + ry, 12, 2);
+      }
+
+      // 横へ吹き抜ける砂嵐（風スジ＆砂粒ドット）
+      const rows = [
+        { y: 2, speed: 2, len: 6, off: 0, alpha: 0.72 },
+        { y: 7, speed: 1, len: 4, off: 9, alpha: 0.58 },
+        { y: 12, speed: 2, len: 7, off: 5, alpha: 0.76 },
+        { y: 17, speed: 1, len: 5, off: 13, alpha: 0.54 },
+        { y: 22, speed: 2, len: 6, off: 3, alpha: 0.74 },
+        { y: 27, speed: 1, len: 4, off: 11, alpha: 0.60 }
+      ];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const px = (frame * r.speed + r.off) & 15;
+        ctx.globalAlpha = r.alpha;
+        ctx.fillStyle = (i & 1) ? "#f8eab8" : "#d8b46c";
+        for (let dx = 0; dx < r.len; dx++) {
+          const sx = x + ((16 - ((px + dx) & 15)) & 15);
+          ctx.fillRect(sx, yTop + r.y, 1, 1);
+        }
+        const gx = x + ((16 - ((px + 8) & 15)) & 15);
+        ctx.fillRect(gx, yTop + r.y + 2, 1, 1);
+      }
+      ctx.restore();
     }
 
     drawCrumblingLadder(ctx, x, yTop, stage, frame) {
@@ -541,6 +579,8 @@
         for (let ry = 3; ry < 32; ry += 6) {
           ctx.fillRect(x + 2, yTop + ry, 12, 2);
         }
+      } else if (val === TILE.SAND_LADDER) {
+        this.drawSandLadder(ctx, x, yTop, world.f);
       } else if (val === TILE.BREAK_LADDER) {
         ctx.fillStyle = "#b84468";
         ctx.fillRect(x + 2, yTop, 2, 32);
@@ -715,6 +755,22 @@
             }
             continue;
           }
+          if (!isBottomRow && belowTile === TILE.SAND_LADDER) {
+            ctx.save();
+            ctx.globalAlpha = 0.36;
+            ctx.fillStyle = "#2858b8";
+            ctx.fillRect(x, floorY, 16, 6);
+            ctx.fillStyle = "#88b0f8";
+            ctx.fillRect(x, floorY, 16, 1);
+            ctx.globalAlpha = 0.64;
+            ctx.fillStyle = "#dec078";
+            const sandShift = (world.f >> 1) & 3;
+            for (let sx = 0; sx < 16; sx += 4) {
+              ctx.fillRect(x + ((sx + sandShift) & 15), floorY, 2, 2);
+            }
+            ctx.restore();
+            continue;
+          }
           ctx.fillStyle = "#2858b8";
           ctx.fillRect(x, floorY, 16, 6);
           ctx.fillStyle = "#5890f8";
@@ -846,7 +902,9 @@
         return "idle_" + facing;
       }
       if (slot.state === 0 && world && slot.row < world.rows - 1) {
-        if (isSameLadderType(world.getTile(slot.row, slot.col), world.getTile(slot.row + 1, slot.col))) {
+        const curT = world.getTile(slot.row, slot.col);
+        if ((!slot.isMario || curT !== TILE.SAND_LADDER) &&
+            isSameLadderType(curT, world.getTile(slot.row + 1, slot.col))) {
           return "climb1_" + facing;
         }
       }
