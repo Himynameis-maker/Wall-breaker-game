@@ -2,9 +2,6 @@
   "use strict";
 
   const G = root.WreckGame || {};
-  const RIGHT = G.RIGHT || 1;
-  const LEFT = G.LEFT || 2;
-  const DOWN = G.DOWN || 4;
   const TILE = G.TILE || {
     EMPTY: 0x00,
     LADDER: 0x01,
@@ -30,12 +27,6 @@
   };
   const isHoleTile = G.isHoleTile || (t => t >= 0x09 && t <= 0x0b);
   const isCrumblingLadderTile = G.isCrumblingLadderTile || (t => t >= 0x51 && t <= 0x55);
-  const isPillarCrumblingTile = G.isPillarCrumblingTile || (t => t >= 0x71 && t <= 0x75);
-  const isDoorRelatedTile = G.isDoorRelatedTile || (t =>
-    t === TILE.DOOR_OPEN ||
-    t === TILE.DOOR_CLOSING_1 ||
-    t === TILE.DOOR_CLOSING_2 ||
-    (t & 0x70) === 0x60);
   const isSameLadderType = G.isSameLadderType || ((a, b) =>
     (a === TILE.LADDER && b === TILE.LADDER) ||
     (a === TILE.BREAK_LADDER && b === TILE.BREAK_LADDER) ||
@@ -46,33 +37,9 @@
     const wc = ((col % cols) + cols) % cols;
     return wc < EDGE_SAFE_COLS || wc >= cols - EDGE_SAFE_COLS;
   });
-  const getHammerTiming = G.getHammerTiming || (slot => {
-    if (slot.isMario) {
-      return slot.isGolden
-        ? { totalFrames: 7, hitFrame: 5, recoverStart: 7 }
-        : { totalFrames: 21, hitFrame: 17, recoverStart: 21 };
-    }
-    return { totalFrames: 27, hitFrame: 14, recoverStart: 23 };
-  });
 
   const INTRO_START_CAM_Y = -122;
   const INTRO_GROUND_OVERSHOOT = 64;
-
-  // 時計針の12段階ドット座標（0=12時, 1=1時, ..., 6=6時, ..., 9=9時, ..., 11=11時）
-  const TIMED_BOMB_HANDS = [
-    [[0, -1], [0, -2], [0, -3], [0, -4], [0, -5]],
-    [[0, -1], [1, -2], [1, -3], [2, -4]],
-    [[1, 0], [2, -1], [3, -1], [4, -2]],
-    [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0]],
-    [[1, 0], [2, 1], [3, 1], [4, 2]],
-    [[0, 1], [1, 2], [1, 3], [2, 4]],
-    [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]],
-    [[0, 1], [-1, 2], [-1, 3], [-2, 4]],
-    [[-1, 0], [-2, 1], [-3, 1], [-4, 2]],
-    [[-1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0]],
-    [[-1, 0], [-2, -1], [-3, -1], [-4, -2]],
-    [[0, -1], [-1, -2], [-1, -3], [-2, -4]]
-  ];
 
   const S = root.WreckSprites || {};
   const {
@@ -219,20 +186,16 @@
       c.width = 8;
       c.height = 8;
       const g = c.getContext("2d");
-      // 8x8 正方形の青ブロック（立体縁取り＋内側デザイン入り）
       g.fillStyle = "#1e4498";
       g.fillRect(0, 0, 8, 8);
-      // 上・左のハイライト
       g.fillStyle = "#4278d8";
       g.fillRect(0, 0, 7, 1);
       g.fillRect(0, 0, 1, 7);
       g.fillStyle = "#78a8ff";
       g.fillRect(0, 0, 1, 1);
-      // 下・右の暗影（目地）
       g.fillStyle = "#0c183c";
       g.fillRect(0, 7, 8, 1);
       g.fillRect(7, 0, 1, 8);
-      // 内側のちょっとした凹凸デザイン
       g.fillStyle = "#142e72";
       g.fillRect(2, 2, 4, 1);
       g.fillRect(2, 2, 1, 4);
@@ -432,13 +395,11 @@
     }
 
     drawRoof(ctx, w) {
-      // 天井の屋根（平べったい台形シルエット＋ブロック模様：y = -9 .. 6、下端6pxで1段目の縦幅を他段と統一）
       ctx.fillStyle = "#1e4498";
       ctx.fillRect(10, -9, Math.max(0, w - 20), 2);
       ctx.fillRect(6, -7, Math.max(0, w - 12), 3);
       ctx.fillRect(2, -4, Math.max(0, w - 4), 4);
 
-      // 上面の明るいハイライト＆肩の縁
       ctx.fillStyle = "#689cff";
       ctx.fillRect(10, -9, Math.max(0, w - 20), 1);
       ctx.fillRect(6, -7, 4, 1);
@@ -448,7 +409,6 @@
       ctx.fillRect(w - 6, -4, 4, 1);
       ctx.fillRect(10, -8, Math.max(0, w - 20), 1);
 
-      // 屋根の縦目地・デザインリブ（8px単位で屋根瓦／板金風）
       for (let x = 8; x < w - 8; x += 8) {
         const topY = (x >= 10 && x < w - 10) ? -8 : -6;
         ctx.fillStyle = "#0c183c";
@@ -457,7 +417,6 @@
         ctx.fillRect(x + 1, topY, 1, -topY);
       }
 
-      // 屋根上部の平べったい装飾凹み（16px単位）
       for (let x = 16; x < w - 24; x += 16) {
         ctx.fillStyle = "#142e72";
         ctx.fillRect(x + 4, -5, 8, 2);
@@ -465,7 +424,6 @@
         ctx.fillRect(x + 4, -3, 8, 1);
       }
 
-      // 軒先の横桁・平べったい青ブロック帯（y = 0 .. 6、他段鉄骨と同じ6px厚）
       ctx.fillStyle = "#1e4498";
       ctx.fillRect(0, 0, w, 6);
       ctx.fillStyle = "#4278d8";
@@ -480,546 +438,6 @@
         ctx.fillStyle = "#142e72";
         ctx.fillRect(x + 2, 2, 4, 2);
       }
-    }
-
-    drawCracks(ctx, x, yTop, level) {
-      ctx.fillStyle = "#181014";
-      if (level >= 1) {
-        ctx.fillRect(x + 3, yTop + 6, 2, 4);
-        ctx.fillRect(x + 5, yTop + 10, 3, 2);
-        ctx.fillRect(x + 8, yTop + 12, 2, 5);
-        ctx.fillRect(x + 10, yTop + 17, 3, 2);
-      }
-      if (level >= 2) {
-        ctx.fillRect(x + 11, yTop + 5, 2, 5);
-        ctx.fillRect(x + 8, yTop + 9, 3, 2);
-        ctx.fillRect(x + 4, yTop + 18, 2, 6);
-        ctx.fillRect(x + 6, yTop + 23, 4, 2);
-        ctx.fillRect(x + 2, yTop + 26, 3, 3);
-      }
-    }
-
-    drawSandLadder(ctx, x, yTop, frame) {
-      ctx.save();
-      // 半透明の砂色ハシゴ本体
-      ctx.globalAlpha = 0.52;
-      ctx.fillStyle = "#b89858";
-      ctx.fillRect(x + 2, yTop, 2, 32);
-      ctx.fillRect(x + 12, yTop, 2, 32);
-      ctx.fillStyle = "#e6ca86";
-      for (let ry = 3; ry < 32; ry += 6) {
-        ctx.fillRect(x + 2, yTop + ry, 12, 2);
-      }
-
-      // 横へ吹き抜ける砂嵐（風スジ＆砂粒ドット）
-      const rows = [
-        { y: 2, speed: 2, len: 6, off: 0, alpha: 0.72 },
-        { y: 7, speed: 1, len: 4, off: 9, alpha: 0.58 },
-        { y: 12, speed: 2, len: 7, off: 5, alpha: 0.76 },
-        { y: 17, speed: 1, len: 5, off: 13, alpha: 0.54 },
-        { y: 22, speed: 2, len: 6, off: 3, alpha: 0.74 },
-        { y: 27, speed: 1, len: 4, off: 11, alpha: 0.60 }
-      ];
-      for (let i = 0; i < rows.length; i++) {
-        const r = rows[i];
-        const px = (frame * r.speed + r.off) & 15;
-        ctx.globalAlpha = r.alpha;
-        ctx.fillStyle = (i & 1) ? "#f8eab8" : "#d8b46c";
-        for (let dx = 0; dx < r.len; dx++) {
-          const sx = x + ((16 - ((px + dx) & 15)) & 15);
-          ctx.fillRect(sx, yTop + r.y, 1, 1);
-        }
-        const gx = x + ((16 - ((px + 8) & 15)) & 15);
-        ctx.fillRect(gx, yTop + r.y + 2, 1, 1);
-      }
-      ctx.restore();
-    }
-
-    drawCrumblingLadder(ctx, x, yTop, stage, frame) {
-      const blink = ((frame >> 1) & 1) === 0;
-      const sideColor = stage <= 2 && blink ? "#ffd0e0" : "#b84468";
-      const rungColor = stage <= 2 && blink ? "#ffffff" : "#ff88a8";
-
-      if (stage >= 4) {
-        ctx.fillStyle = sideColor;
-        ctx.fillRect(x + 2, yTop + 2, 2, 28);
-        ctx.fillRect(x + 12, yTop + 2, 2, 28);
-        ctx.fillStyle = rungColor;
-        for (let ry = 4; ry < 30; ry += 6) {
-          ctx.fillRect(x + 2, yTop + ry, 4, 2);
-          ctx.fillRect(x + 10, yTop + ry, 4, 2);
-        }
-      } else if (stage === 3) {
-        ctx.fillStyle = sideColor;
-        ctx.fillRect(x + 2, yTop + 4, 2, 10);
-        ctx.fillRect(x + 2, yTop + 18, 2, 10);
-        ctx.fillRect(x + 12, yTop + 6, 2, 10);
-        ctx.fillRect(x + 12, yTop + 20, 2, 8);
-        ctx.fillStyle = rungColor;
-        for (let ry = 6; ry < 28; ry += 7) {
-          ctx.fillRect(x + 3, yTop + ry, 3, 2);
-          ctx.fillRect(x + 10, yTop + ry, 3, 2);
-        }
-      } else if (stage === 2) {
-        ctx.fillStyle = sideColor;
-        ctx.fillRect(x + 2, yTop + 6, 2, 7);
-        ctx.fillRect(x + 12, yTop + 17, 2, 8);
-        ctx.fillStyle = rungColor;
-        ctx.fillRect(x + 3, yTop + 8, 4, 2);
-        ctx.fillRect(x + 9, yTop + 19, 4, 2);
-        ctx.fillRect(x + 6, yTop + 13, 3, 2);
-      } else {
-        ctx.fillStyle = rungColor;
-        ctx.fillRect(x + 3, yTop + 7, 2, 3);
-        ctx.fillRect(x + 11, yTop + 14, 2, 3);
-        ctx.fillRect(x + 5, yTop + 22, 3, 2);
-      }
-    }
-
-    drawPillar(ctx, x, yTop) {
-      // 上下フランジ＋中央I字ビーム鉄柱（背景扱いで素通り可）
-      ctx.fillStyle = "#526074";
-      ctx.fillRect(x + 2, yTop, 12, 4);
-      ctx.fillRect(x + 2, yTop + 28, 12, 4);
-      ctx.fillStyle = "#98acc4";
-      ctx.fillRect(x + 2, yTop + 1, 12, 1);
-      ctx.fillRect(x + 2, yTop + 29, 12, 1);
-
-      ctx.fillStyle = "#485468";
-      ctx.fillRect(x + 5, yTop + 4, 6, 24);
-      ctx.fillStyle = "#7a8da6";
-      ctx.fillRect(x + 6, yTop + 4, 4, 24);
-      ctx.fillStyle = "#b4c8e0";
-      ctx.fillRect(x + 7, yTop + 4, 1, 24);
-
-      // リベット・継手
-      ctx.fillStyle = "#262e3c";
-      ctx.fillRect(x + 3, yTop + 1, 2, 2);
-      ctx.fillRect(x + 11, yTop + 1, 2, 2);
-      ctx.fillRect(x + 3, yTop + 29, 2, 2);
-      ctx.fillRect(x + 11, yTop + 29, 2, 2);
-      ctx.fillRect(x + 5, yTop + 15, 6, 2);
-    }
-
-    drawPillarCrumbling(ctx, x, yTop, stage, frame) {
-      const blink = ((frame >> 1) & 1) === 0;
-      const h = Math.max(4, stage * 5);
-      const offsetY = 32 - h;
-      ctx.fillStyle = stage <= 2 && blink ? "#d8e6f8" : "#627288";
-      ctx.fillRect(x + 5, yTop + offsetY, 6, h);
-      ctx.fillStyle = blink ? "#ffffff" : "#98acc4";
-      ctx.fillRect(x + 6, yTop + offsetY, 2, Math.max(2, h - 2));
-      ctx.fillStyle = "#404c5c";
-      ctx.fillRect(x + 2, yTop + 28, 12, 4);
-    }
-
-    drawDoor(ctx, x, yTop, tile, frame) {
-      const base = tile & 0xf7;
-      let panelW = 6; // 閉じた状態: 左右各6px
-      let lampColor = "#2c4c50";
-
-      if (base === TILE.DOOR_OPENING_1 || base === TILE.DOOR_CLOSING_2) {
-        panelW = 4;
-        if (base === TILE.DOOR_OPENING_1) {
-          lampColor = (tile & 0x08) ? "#ff7840" : "#b8ffff";
-        } else {
-          lampColor = "#f0c048";
-        }
-      } else if (base === TILE.DOOR_OPENING_2 || base === TILE.DOOR_CLOSING_1) {
-        panelW = 2;
-        if (base === TILE.DOOR_OPENING_2) {
-          lampColor = (tile & 0x08) ? "#ff7840" : "#b8ffff";
-        } else {
-          lampColor = "#f0c048";
-        }
-      } else if (base === TILE.DOOR_OPEN) {
-        panelW = 0;
-        lampColor = "#48f078";
-      }
-
-      // 外枠・自動ドア上部センサーレール
-      ctx.fillStyle = "#1f4246";
-      ctx.fillRect(x + 1, yTop + 3, 14, 29);
-      ctx.fillStyle = "#3c8084";
-      ctx.fillRect(x + 1, yTop + 3, 14, 3);
-      ctx.fillRect(x + 1, yTop + 6, 1, 26);
-      ctx.fillRect(x + 14, yTop + 6, 1, 26);
-      ctx.fillStyle = "#6cc8c8";
-      ctx.fillRect(x + 2, yTop + 3, 12, 1);
-
-      // センサーランプ
-      ctx.fillStyle = lampColor;
-      ctx.fillRect(x + 7, yTop + 4, 2, 1);
-
-      // 奥側の暗い出入口空間
-      ctx.fillStyle = "#04060c";
-      ctx.fillRect(x + 2, yTop + 6, 12, 26);
-      if (panelW === 0) {
-        ctx.fillStyle = "#0e1a26";
-        ctx.fillRect(x + 2, yTop + 6, 1, 26);
-        ctx.fillRect(x + 13, yTop + 6, 1, 26);
-      }
-
-      // 開け始めのダウン判定中フラッシュ縁取り
-      if ((tile & 0x80) === 0 && (tile & 0x70) === 0x60 && ((frame >> 1) & 1) === 0) {
-        ctx.fillStyle = (tile & 0x08) ? "rgba(255, 110, 60, 0.35)" : "rgba(140, 245, 255, 0.35)";
-        ctx.fillRect(x + 2 + panelW, yTop + 6, 12 - panelW * 2, 26);
-      }
-
-      // 左右両開きの自動ドアパネル
-      if (panelW > 0) {
-        const lx = x + 2;
-        const rx = x + 14 - panelW;
-
-        ctx.fillStyle = "#3c8c8c";
-        ctx.fillRect(lx, yTop + 6, panelW, 26);
-        ctx.fillRect(rx, yTop + 6, panelW, 26);
-
-        ctx.fillStyle = "#68c8c4";
-        ctx.fillRect(lx, yTop + 7, Math.max(1, panelW - 1), 24);
-        ctx.fillRect(rx + 1, yTop + 7, Math.max(1, panelW - 1), 24);
-
-        // 扉の小窓・中央パッキン
-        if (panelW >= 4) {
-          ctx.fillStyle = "#162d38";
-          ctx.fillRect(lx + 1, yTop + 10, panelW - 2, 7);
-          ctx.fillRect(rx + 1, yTop + 10, panelW - 2, 7);
-          ctx.fillStyle = "#a8f0f0";
-          ctx.fillRect(lx + 1, yTop + 10, 1, 2);
-          ctx.fillRect(rx + 1, yTop + 10, 1, 2);
-        }
-        ctx.fillStyle = "#1c3c40";
-        ctx.fillRect(lx + panelW - 1, yTop + 6, 1, 26);
-        ctx.fillRect(rx, yTop + 6, 1, 26);
-      }
-    }
-
-    drawBreakableWall(ctx, x, yTop, tile) {
-      const hp = tile & 0x07;
-      const group = tile & 0x70; // 0x40=1回壁, 0x10=2回壁, 0x20=3回壁
-
-      if (group === 0x40) {
-        // 1回壊せる壁（軟質レンガ）
-        ctx.fillStyle = "#6e2e1d";
-        ctx.fillRect(x + 1, yTop + 3, 14, 29);
-        ctx.fillStyle = "#b85432";
-        ctx.fillRect(x + 2, yTop + 4, 5, 5);
-        ctx.fillRect(x + 9, yTop + 4, 5, 5);
-        ctx.fillRect(x + 2, yTop + 11, 12, 5);
-        ctx.fillRect(x + 2, yTop + 18, 5, 5);
-        ctx.fillRect(x + 9, yTop + 18, 5, 5);
-        ctx.fillRect(x + 2, yTop + 25, 12, 6);
-      } else if (group === 0x10) {
-        // 2回壊せる壁（硬質ブロンズ/橙パネル）
-        ctx.fillStyle = "#5a4220";
-        ctx.fillRect(x + 1, yTop + 3, 14, 29);
-        ctx.fillStyle = "#d08c30";
-        ctx.fillRect(x + 2, yTop + 4, 12, 12);
-        ctx.fillRect(x + 2, yTop + 18, 12, 12);
-        ctx.fillStyle = "#f0b858";
-        ctx.fillRect(x + 3, yTop + 5, 10, 2);
-        ctx.fillRect(x + 3, yTop + 19, 10, 2);
-        if (hp === 1) {
-          this.drawCracks(ctx, x, yTop, 1);
-        }
-      } else {
-        // 3回壊せる壁（重厚グレー鉄板）
-        ctx.fillStyle = "#3a4658";
-        ctx.fillRect(x + 1, yTop + 3, 14, 29);
-        ctx.fillStyle = "#768aa0";
-        ctx.fillRect(x + 2, yTop + 4, 12, 27);
-        ctx.fillStyle = "#a8bed4";
-        ctx.fillRect(x + 2, yTop + 4, 12, 2);
-        ctx.fillRect(x + 2, yTop + 17, 12, 1);
-        ctx.fillStyle = "#2b3442";
-        ctx.fillRect(x + 3, yTop + 7, 2, 2);
-        ctx.fillRect(x + 11, yTop + 7, 2, 2);
-        ctx.fillRect(x + 3, yTop + 27, 2, 2);
-        ctx.fillRect(x + 11, yTop + 27, 2, 2);
-        if (hp === 2) {
-          this.drawCracks(ctx, x, yTop, 1);
-        } else if (hp <= 1) {
-          this.drawCracks(ctx, x, yTop, 2);
-        }
-      }
-    }
-
-    drawDrum(ctx, x, yTop) {
-      // 天板（yTop+6..+11）+ 円筒胴体（yTop+11..+32）：天板に乗った時の足元 yTop+11 と一致
-      ctx.fillStyle = "#6c1c18";
-      ctx.fillRect(x + 1, yTop + 6, 14, 5);
-      ctx.fillStyle = "#c84838";
-      ctx.fillRect(x + 2, yTop + 7, 12, 3);
-      ctx.fillStyle = "#ee8868";
-      ctx.fillRect(x + 3, yTop + 7, 6, 1);
-
-      ctx.fillStyle = "#982820";
-      ctx.fillRect(x + 1, yTop + 11, 14, 21);
-      ctx.fillStyle = "#d04434";
-      ctx.fillRect(x + 3, yTop + 11, 8, 21);
-      ctx.fillStyle = "#f07c64";
-      ctx.fillRect(x + 4, yTop + 11, 2, 21);
-
-      // ドラム缶の補強リブ2本
-      ctx.fillStyle = "#4c1410";
-      ctx.fillRect(x + 1, yTop + 17, 14, 2);
-      ctx.fillRect(x + 1, yTop + 25, 14, 2);
-      ctx.fillStyle = "#e8a858";
-      ctx.fillRect(x + 3, yTop + 17, 8, 1);
-      ctx.fillRect(x + 3, yTop + 25, 8, 1);
-    }
-
-    drawBomb(ctx, x, yTop, frame) {
-      // 導火線と点滅火花
-      ctx.fillStyle = "#c89048";
-      ctx.fillRect(x + 7, yTop + 9, 2, 4);
-      const sparkOn = ((frame >> 2) & 1) === 0;
-      ctx.fillStyle = sparkOn ? "#ffec48" : "#ff5020";
-      ctx.fillRect(x + 8, yTop + 6, 3, 3);
-      ctx.fillStyle = sparkOn ? "#ffffff" : "#ffa830";
-      ctx.fillRect(x + 9, yTop + 7, 1, 1);
-
-      // 口金
-      ctx.fillStyle = "#687080";
-      ctx.fillRect(x + 5, yTop + 13, 6, 2);
-
-      // 爆弾本体（丸型ドット）
-      ctx.fillStyle = "#1c2234";
-      ctx.fillRect(x + 3, yTop + 15, 10, 15);
-      ctx.fillRect(x + 2, yTop + 17, 12, 11);
-      ctx.fillStyle = "#323c58";
-      ctx.fillRect(x + 4, yTop + 16, 7, 12);
-      // ハイライト & 危険マーク
-      ctx.fillStyle = "#8ca4d8";
-      ctx.fillRect(x + 4, yTop + 18, 2, 3);
-      ctx.fillStyle = "#e83828";
-      ctx.fillRect(x + 7, yTop + 21, 3, 4);
-    }
-
-    drawTimedBomb(ctx, x, yTop, tb, frame) {
-      // 残り10.0秒(600F)以下から0.5秒(30F)ごとに赤点滅（10s赤 -> 9.5s通常 -> 9.0s赤...）
-      const isRedBlink = !!(tb && tb.remainFrames <= 600 && (Math.floor((600 - tb.remainFrames) / 30) % 2 === 0));
-      // 針の向き（5秒=300Fごとに1段階反時計回り: 60s=12時, 45s=9時, 30s=6時, 15s=3時, 0s=12時）
-      const step = tb ? (Math.ceil(Math.max(1, tb.remainFrames) / 300) % 12) : 6;
-      const handDots = TIMED_BOMB_HANDS[step] || TIMED_BOMB_HANDS[0];
-
-      const bodyDark = isRedBlink ? "#6e1010" : "#1c2336";
-      const bodyMid = isRedBlink ? "#d42820" : "#344262";
-      const bodyLight = isRedBlink ? "#ff6850" : "#5e749c";
-      const bezelColor = isRedBlink ? "#e02018" : "#2e3c54";
-      const bezelHi = isRedBlink ? "#ff8870" : "#7c94bc";
-      const faceBg = isRedBlink ? "#ffc4c4" : "#f4f6fc";
-      const tickColor = isRedBlink ? "#901818" : "#54627c";
-      const handColor = isRedBlink ? "#5a0606" : "#141a28";
-      const pinColor = isRedBlink ? "#ff2020" : "#e03028";
-
-      // 爆弾本体（下部のベース筐体）
-      ctx.fillStyle = bodyDark;
-      ctx.fillRect(x + 2, yTop + 20, 12, 11);
-      ctx.fillRect(x + 1, yTop + 22, 14, 8);
-      ctx.fillStyle = bodyMid;
-      ctx.fillRect(x + 3, yTop + 21, 9, 9);
-      ctx.fillStyle = bodyLight;
-      ctx.fillRect(x + 3, yTop + 22, 2, 6);
-
-      // 警告バンド＆リベット
-      ctx.fillStyle = isRedBlink ? "#ffe868" : "#e89828";
-      ctx.fillRect(x + 4, yTop + 26, 8, 2);
-      ctx.fillStyle = isRedBlink ? "#ffffff" : "#8094b8";
-      ctx.fillRect(x + 2, yTop + 23, 1, 1);
-      ctx.fillRect(x + 13, yTop + 23, 1, 1);
-
-      // 時計上部の小さなボタン・竜頭
-      ctx.fillStyle = bezelHi;
-      ctx.fillRect(x + 7, yTop + 3, 3, 2);
-
-      // 大きめのアナログ時計 外枠（15×15px: 中心 cx=x+8, cy=yTop+12）
-      const cx = x + 8;
-      const cy = yTop + 12;
-      ctx.fillStyle = bezelColor;
-      ctx.fillRect(cx - 3, cy - 7, 7, 15);
-      ctx.fillRect(cx - 5, cy - 6, 11, 13);
-      ctx.fillRect(cx - 6, cy - 5, 13, 11);
-      ctx.fillRect(cx - 7, cy - 3, 15, 7);
-
-      // 時計ベゼル上部のハイライト
-      ctx.fillStyle = bezelHi;
-      ctx.fillRect(cx - 3, cy - 7, 7, 1);
-      ctx.fillRect(cx - 5, cy - 6, 2, 1);
-      ctx.fillRect(cx + 4, cy - 6, 2, 1);
-
-      // 内側の文字盤（直径13pxの丸型）
-      ctx.fillStyle = faceBg;
-      ctx.fillRect(cx - 3, cy - 6, 7, 13);
-      ctx.fillRect(cx - 4, cy - 5, 9, 11);
-      ctx.fillRect(cx - 5, cy - 4, 11, 9);
-      ctx.fillRect(cx - 6, cy - 3, 13, 7);
-
-      // 12時（赤目盛）・3時・6時・9時の目盛ドット
-      ctx.fillStyle = "#e02420";
-      ctx.fillRect(cx, cy - 6, 1, 1);
-      ctx.fillStyle = tickColor;
-      ctx.fillRect(cx + 6, cy, 1, 1);
-      ctx.fillRect(cx, cy + 6, 1, 1);
-      ctx.fillRect(cx - 6, cy, 1, 1);
-
-      // 時計の針（5秒ごとの12段階）
-      ctx.fillStyle = handColor;
-      for (let i = 0; i < handDots.length; i++) {
-        ctx.fillRect(cx + handDots[i][0], cy + handDots[i][1], 1, 1);
-      }
-
-      // 針の中心ピン
-      ctx.fillStyle = pinColor;
-      ctx.fillRect(cx, cy, 1, 1);
-    }
-
-    drawTileAt(ctx, x, yTop, val, world) {
-      if (val === TILE.EMPTY || isHoleTile(val) || val === TILE.HOLE_FALLING || val === TILE.DRUM_FALLING) {
-        return;
-      }
-
-      if (val === TILE.LADDER) {
-        ctx.fillStyle = "#d89040";
-        ctx.fillRect(x + 2, yTop, 2, 32);
-        ctx.fillRect(x + 12, yTop, 2, 32);
-        ctx.fillStyle = "#f8c068";
-        for (let ry = 3; ry < 32; ry += 6) {
-          ctx.fillRect(x + 2, yTop + ry, 12, 2);
-        }
-      } else if (val === TILE.SAND_LADDER) {
-        this.drawSandLadder(ctx, x, yTop, world.f);
-      } else if (val === TILE.BREAK_LADDER) {
-        ctx.fillStyle = "#b84468";
-        ctx.fillRect(x + 2, yTop, 2, 32);
-        ctx.fillRect(x + 12, yTop, 2, 32);
-        ctx.fillStyle = "#ff88a8";
-        for (let ry = 3; ry < 32; ry += 6) {
-          ctx.fillRect(x + 2, yTop + ry, 5, 2);
-          ctx.fillRect(x + 9, yTop + ry, 5, 2);
-        }
-      } else if (isCrumblingLadderTile(val)) {
-        const info = world.getCrumblingInfo ? world.getCrumblingInfo(Math.floor(yTop / 32), Math.floor(x / 16)) : null;
-        const stage = info ? info.stage : (val & 0x07);
-        this.drawCrumblingLadder(ctx, x, yTop, stage, world.f);
-      } else if (val === TILE.PILLAR) {
-        this.drawPillar(ctx, x, yTop);
-      } else if (isPillarCrumblingTile(val)) {
-        const stage = val & 0x07;
-        this.drawPillarCrumbling(ctx, x, yTop, stage, world.f);
-      } else if (val === TILE.DOOR || isDoorRelatedTile(val)) {
-        this.drawDoor(ctx, x, yTop, val, world.f);
-      } else if (val === TILE.DRUM) {
-        this.drawDrum(ctx, x, yTop);
-      } else if (val === TILE.BOMB) {
-        this.drawBomb(ctx, x, yTop, world.f);
-      } else if (val === TILE.TIMED_BOMB) {
-        const row = Math.floor(yTop / 32);
-        const col = Math.floor(x / 16);
-        const tb = world.getTimedBombAt ? world.getTimedBombAt(row, col) : null;
-        this.drawTimedBomb(ctx, x, yTop, tb, world.f);
-      } else if ((val & 0x80) !== 0) {
-        this.drawBreakableWall(ctx, x, yTop, val);
-      }
-    }
-
-    drawFallingPillars(ctx, world) {
-      if (!world.fallingPillars || world.fallingPillars.length === 0) return;
-      for (const fp of world.fallingPillars) {
-        const dropOffsetY = (fp.stage - 1) * 8;
-        const x = fp.col * 16;
-        const yTop = fp.row * 32 + dropOffsetY;
-        const floorY = yTop + 32;
-
-        // 滞空・落下する「白い床板」パーツ（原作の白い落下床表現）
-        ctx.fillStyle = "#b8c8e8";
-        ctx.fillRect(x, floorY, 16, 6);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(x, floorY, 16, 2);
-        ctx.fillStyle = "#788cb8";
-        ctx.fillRect(x + 2, floorY + 3, 12, 2);
-
-        if (!fp.isFloorOnly) {
-          if (fp.origAboveTile === TILE.TIMED_BOMB && fp.timedBomb) {
-            this.drawTimedBomb(ctx, x, yTop, fp.timedBomb, world.f);
-          } else {
-            this.drawTileAt(ctx, x, yTop, fp.origAboveTile, world);
-          }
-        }
-      }
-    }
-
-    drawFireball(fb) {
-      if (!fb || fb.animStage < 0) return;
-      const ctx = this.ctx;
-      const cx = Math.round(fb.x + 8);
-      const cy = Math.round(fb.y - 11);
-      const isLeft = (fb.dir & LEFT) !== 0;
-      const tailDir = isLeft ? 1 : -1;
-      const frontDir = -tailDir;
-      const stage = fb.animStage;
-
-      if (stage === 0) {
-        // 極小の火種
-        ctx.fillStyle = "#d83018";
-        ctx.fillRect(cx - 2, cy - 2, 4, 4);
-        ctx.fillStyle = "#ffe860";
-        ctx.fillRect(cx - 1, cy - 1, 2, 2);
-        return;
-      }
-
-      if (stage === 1) {
-        // 小〜中くらいの火の玉
-        ctx.fillStyle = "#e03818";
-        ctx.fillRect(cx - 4, cy - 3, 8, 6);
-        ctx.fillRect(cx - 3, cy - 4, 6, 8);
-        ctx.fillStyle = "#ff8c20";
-        ctx.fillRect(cx - 3, cy - 2, 6, 4);
-        ctx.fillRect(cx - 2, cy - 3, 4, 6);
-        ctx.fillStyle = "#fff490";
-        ctx.fillRect(cx - 1, cy - 1, 2, 2);
-        return;
-      }
-
-      if (stage === 2) {
-        // 大炎A
-        ctx.fillStyle = "#d82818";
-        ctx.fillRect(cx - 5, cy - 4, 10, 8);
-        ctx.fillRect(cx - 4, cy - 5, 8, 10);
-        ctx.fillRect(cx + tailDir * 5 - 1, cy - 4, 3, 2);
-        ctx.fillRect(cx + tailDir * 6 - 1, cy - 1, 3, 3);
-        ctx.fillRect(cx + tailDir * 5 - 1, cy + 3, 3, 2);
-
-        ctx.fillStyle = "#ff8820";
-        ctx.fillRect(cx - 4, cy - 3, 8, 6);
-        ctx.fillRect(cx - 3, cy - 4, 6, 8);
-        ctx.fillRect(cx + tailDir * 4 - 1, cy - 2, 2, 4);
-
-        ctx.fillStyle = "#ffec58";
-        ctx.fillRect(cx + frontDir - 2, cy - 2, 4, 4);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(cx + frontDir - 1, cy - 1, 2, 2);
-        return;
-      }
-
-      // 大炎B（2Fごとに交互揺らめき）
-      ctx.fillStyle = "#f04018";
-      ctx.fillRect(cx - 4, cy - 5, 8, 10);
-      ctx.fillRect(cx - 5, cy - 3, 10, 6);
-      ctx.fillRect(cx - 1, cy - 6, 2, 1);
-      ctx.fillRect(cx - 1, cy + 5, 2, 1);
-      ctx.fillRect(cx + tailDir * 6 - 1, cy - 3, 3, 2);
-      ctx.fillRect(cx + tailDir * 5 - 1, cy + 1, 4, 2);
-
-      ctx.fillStyle = "#ffa028";
-      ctx.fillRect(cx - 3, cy - 4, 6, 8);
-      ctx.fillRect(cx - 4, cy - 2, 8, 4);
-      ctx.fillRect(cx + tailDir * 4 - 1, cy - 1, 2, 2);
-
-      ctx.fillStyle = "#fff8a8";
-      ctx.fillRect(cx + frontDir - 2, cy - 1, 3, 3);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(cx + frontDir - 1, cy - 1, 2, 2);
     }
 
     draw(world) {
@@ -1037,7 +455,6 @@
       ctx.save();
       ctx.translate(0, -camOffset);
 
-      // 画面端2マス（左右合計4マス）の背景金網グラフィック（明るめグレー）
       if (world.cols > EDGE_SAFE_COLS * 2 && this.wireFencePattern) {
         const edgeW = EDGE_SAFE_COLS * 16;
         const fenceTop = 6;
@@ -1051,12 +468,10 @@
         ctx.restore();
       }
 
-      // 左右端ループゾーンの目印（ごく薄いガイド線）
       ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
       ctx.fillRect(0, 6, 1, Math.max(0, world.rows * 32 - 6));
       ctx.fillRect(w - 1, 6, 1, Math.max(0, world.rows * 32 - 6));
 
-      // 画面外の天井（平べったい青屋根）と画面外の床（小さい正方形の青ブロック）
       this.drawRoof(ctx, w);
       if (this.floorBlockPattern) {
         const floorBottomStartY = world.rows * 32 + 6;
@@ -1071,7 +486,6 @@
         }
       }
 
-      // 床（穴・落下開始穴 $0C および同種連続はしごの中間以外は鉄骨を描画、最下段は常に足場あり）
       for (let row = 0; row < world.rows; row++) {
         const floorY = (row + 1) * 32;
         const isBottomRow = row === world.rows - 1;
@@ -1110,7 +524,6 @@
         }
       }
 
-      // マップタイル
       for (let row = 0; row < world.rows; row++) {
         const yTop = row * 32;
         for (let col = 0; col < world.cols; col++) {
@@ -1119,10 +532,8 @@
         }
       }
 
-      // 鉄柱の滞空・落下オブジェクト＋白い床板
       this.drawFallingPillars(ctx, world);
 
-      // 破壊破片エフェクト
       if (world.breakEffects) {
         for (const ef of world.breakEffects) {
           const t = ef.maxTimer - ef.timer;
@@ -1156,7 +567,6 @@
         this.drawFireball(world.fireball);
       }
 
-      // 爆風・崩落煙エフェクト
       if (world.explosions) {
         for (const ex of world.explosions) {
           const cx = ex.col * 16 + 8;
@@ -1221,598 +631,11 @@
         this.drawBannerText(ctx, w, "START!", 44, -1);
       }
     }
-
-    pickFrame(slot, world) {
-      const faceVal = slot.facing || slot.dir;
-      const facing = (faceVal & 2) ? "L" : "R";
-
-      if (slot.state === 15 || slot.state === 16) {
-        return "idle_" + facing;
-      }
-      if (slot.state === 10) {
-        const idx = ((world ? world.f >> 2 : 0) & 1) ? "walk1" : "walk2";
-        return idx + "_" + facing;
-      }
-      if (slot.state === 11) {
-        return "idle_" + facing;
-      }
-      if (slot.state === 4) {
-        return "idle_" + facing;
-      }
-      if (slot.state === 0 && world && slot.row < world.rows - 1) {
-        const curT = world.getTile(slot.row, slot.col);
-        if ((!slot.isMario || curT !== TILE.SAND_LADDER) &&
-            isSameLadderType(curT, world.getTile(slot.row + 1, slot.col))) {
-          return "climb1_" + facing;
-        }
-      }
-      if (slot.state === 2) {
-        const idx = ((slot.prom >> 3) & 1) ? "climb2" : "climb1";
-        return idx + "_" + facing;
-      }
-      if (slot.state === 3) {
-        if (slot.kind === "arrive" || slot.kind === "arrive_top") {
-          return "idle_" + facing;
-        }
-        return "climb1_" + facing;
-      }
-      if (slot.state === 6) {
-        const idx = ((slot.n >> 2) & 1) ? "climb2" : "climb1";
-        return idx + "_" + facing;
-      }
-      if (slot.state === 5) {
-        return "walk1_" + facing;
-      }
-      if (slot.state === 8 || slot.state === 9) {
-        return "walk2_" + facing;
-      }
-      if (slot.state === 1) {
-        const cycle = ["walk1", "idle", "walk2", "idle"];
-        const idx = cycle[(slot.x >> 2) & 3];
-        return idx + "_" + facing;
-      }
-      return "idle_" + facing;
-    }
-
-    drawHammerOverlay(slot, baseX, baseY) {
-      const ctx = this.ctx;
-      const faceVal = slot.facing || slot.dir;
-      const isLeft = (faceVal & 2) !== 0;
-      const timing = getHammerTiming(slot);
-      const total = timing.totalFrames;
-      const hitF = timing.hitFrame;
-      const recoverStart = timing.recoverStart != null ? timing.recoverStart : total;
-      const t = slot.hammerTimer;
-
-      // 0: 後ろ振りかぶり, 1: 頭上構え, 2: 前へ振り下ろし, 3: 振り終わり戻り硬直（親方終盤）
-      let phase = 0;
-      if (t >= recoverStart) {
-        phase = 3;
-      } else if (t >= hitF) {
-        phase = 2;
-      } else if (t >= Math.floor(hitF * 0.55)) {
-        phase = 1;
-      }
-
-      const headColor = slot.isGolden ? "#ffe848" : (slot.isMario ? "#58687c" : "#3c4252");
-      const gripColor = "#c8843c";
-
-      if (phase === 0) {
-        const hx = isLeft ? baseX + 12 : baseX - 5;
-        const hy = baseY + 1;
-        ctx.fillStyle = gripColor;
-        ctx.fillRect(isLeft ? baseX + 10 : baseX + 4, baseY + 6, 2, 7);
-        ctx.fillStyle = headColor;
-        ctx.fillRect(hx, hy, 9, 6);
-        ctx.fillStyle = "#b0c0d4";
-        ctx.fillRect(hx + 1, hy + 1, 7, 1);
-      } else if (phase === 1) {
-        const hx = isLeft ? baseX + 2 : baseX + 5;
-        const hy = baseY - 7;
-        ctx.fillStyle = gripColor;
-        ctx.fillRect(isLeft ? baseX + 6 : baseX + 8, baseY - 1, 2, 10);
-        ctx.fillStyle = headColor;
-        ctx.fillRect(hx, hy, 9, 6);
-        ctx.fillStyle = "#b0c0d4";
-        ctx.fillRect(hx + 1, hy + 1, 7, 1);
-      } else if (phase === 2) {
-        const hx = isLeft ? baseX - 7 : baseX + 14;
-        const hy = baseY + 11;
-        ctx.fillStyle = gripColor;
-        ctx.fillRect(isLeft ? baseX - 1 : baseX + 9, baseY + 13, 8, 2);
-        ctx.fillStyle = headColor;
-        ctx.fillRect(hx, hy, 9, 7);
-        ctx.fillStyle = "#b0c0d4";
-        ctx.fillRect(hx + 1, hy + 5, 7, 1);
-
-        if (t <= hitF + 4 && t < total) {
-          ctx.fillStyle = "#fff480";
-          const sx = isLeft ? baseX - 9 : baseX + 24;
-          ctx.fillRect(sx, baseY + 9, 2, 2);
-          ctx.fillRect(sx, baseY + 17, 2, 2);
-        }
-      } else {
-        const hx = isLeft ? baseX - 2 : baseX + 10;
-        const hy = baseY + 14;
-        ctx.fillStyle = gripColor;
-        ctx.fillRect(isLeft ? baseX + 4 : baseX + 10, baseY + 11, 2, 5);
-        ctx.fillStyle = headColor;
-        ctx.fillRect(hx, hy, 8, 5);
-        ctx.fillStyle = "#b0c0d4";
-        ctx.fillRect(hx + 1, hy + 1, 6, 1);
-      }
-    }
-
-    drawActorAt(slot, sprites, baseX, drawY, world) {
-      const img = sprites[this.pickFrame(slot, world)];
-      if (!img) return;
-      const ctx = this.ctx;
-
-      if (slot.state === 15 || slot.state === 16) {
-        // ドラム缶閉じ込め状態: 天板から頭・手だけ覗かせてジタバタ点滅
-        const f = world ? world.f : 0;
-        const phase = (f >> 2) & 1;
-        const bobY = slot.state === 15 ? 4 : (phase ? -3 : -2);
-        ctx.drawImage(img, 0, 0, 16, 9, baseX, drawY + bobY, 16, 9);
-        const handColor = slot.isMario ? "#f4be8c" : "#e6e6e6";
-        ctx.fillStyle = handColor;
-        ctx.fillRect(baseX + 1, drawY + bobY + (phase ? 5 : 7), 2, 2);
-        ctx.fillRect(baseX + 13, drawY + bobY + (phase ? 7 : 5), 2, 2);
-        if (slot.state === 16) {
-          ctx.fillStyle = phase ? "#ffec48" : "#ffffff";
-          ctx.fillRect(baseX + 7, drawY - 6, 2, 2);
-        }
-        return;
-      }
-
-      if (slot.state === 10) {
-        ctx.save();
-        ctx.translate(baseX, drawY + 26);
-        ctx.scale(1, -1);
-        ctx.drawImage(img, 0, 0);
-        ctx.restore();
-        return;
-      }
-
-      if (slot.state === 11) {
-        const shakeX = ((world ? world.f >> 1 : 0) & 1) ? 1 : -1;
-        ctx.drawImage(img, baseX + shakeX, drawY + 2);
-        const f = world ? world.f : 0;
-        const sx1 = baseX + 7 + Math.round(Math.cos(f * 0.35) * 5);
-        const sx2 = baseX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
-        ctx.fillStyle = "#ffec48";
-        ctx.fillRect(sx1, drawY - 3, 2, 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(sx2, drawY - 1, 2, 2);
-        return;
-      }
-
-      ctx.drawImage(img, baseX, drawY);
-      if (slot.state === 4) {
-        this.drawHammerOverlay(slot, baseX, drawY);
-      }
-    }
-
-    getLadderVisualOffsetY(slot) {
-      if (slot.state === 3) {
-        if (slot.kind === "enter_top") {
-          const limit = slot.isMario ? 12 : 9;
-          return Math.min(10, Math.max(2, Math.round((slot.n / limit) * 10)));
-        }
-        if (slot.kind === "arrive_top") {
-          const remain = Math.max(0, 12 - slot.n);
-          return Math.min(10, Math.round((remain / 12) * 10));
-        }
-        return 0;
-      }
-      if (slot.state === 6) {
-        if (slot.kind === "enter_top_cont") {
-          return Math.min(10, Math.max(2, Math.round((slot.n / 16) * 10)));
-        }
-        if (slot.kind === "cont" && (slot.dir & DOWN)) {
-          return Math.min(10, Math.max(2, Math.round((slot.n / 12) * 10)));
-        }
-        return 0;
-      }
-      if (slot.state === 2 && slot.prom === 31 && slot.y === slot.topY) {
-        return 10;
-      }
-      return 0;
-    }
-
-    drawActor(slot, sprites, worldWidth, world) {
-      const drawY = slot.y - 26 + this.getLadderVisualOffsetY(slot);
-      this.drawActorAt(slot, sprites, slot.x, drawY, world);
-      if (slot.x > worldWidth - 16) {
-        this.drawActorAt(slot, sprites, slot.x - worldWidth, drawY, world);
-      }
-      if (slot.x < 16) {
-        this.drawActorAt(slot, sprites, slot.x + worldWidth, drawY, world);
-      }
-    }
-
-    drawEggplantAt(enemy, baseX, drawY, world) {
-      const ctx = this.ctx;
-      const isBack = !!enemy.isBack;
-      const col = isBack
-        ? {
-            outline: "#121828",
-            body: "#25324e",
-            highlight: "#3a4d75",
-            calyx: "#264050",
-            calyxLight: "#38586c",
-            mask: "#465878",
-            maskShade: "#32405a",
-            eye: "#687898",
-            eyeHole: "#1c2438",
-            limb: "#2e3c5a"
-          }
-        : {
-            outline: "#1e0a32",
-            body: "#6c249c",
-            highlight: "#a64ce0",
-            calyx: "#2ca03e",
-            calyxLight: "#6ce468",
-            mask: "#f0f2ff",
-            maskShade: "#b8c2dc",
-            eye: "#e82838",
-            eyeHole: "#180828",
-            limb: "#f0b840"
-          };
-
-      if (enemy.state === 15 || enemy.state === 16) {
-        const f = world ? world.f : 0;
-        const phase = (f >> 2) & 1;
-        const lidY = drawY - 4;
-        const headY = enemy.state === 15 ? (lidY + 4) : (lidY + (phase ? -3 : -1));
-
-        ctx.save();
-        if (isBack) ctx.globalAlpha = 0.85;
-        ctx.fillStyle = col.calyx;
-        ctx.fillRect(baseX + 7, headY - 1, 2, 2);
-        ctx.fillRect(baseX + 4, headY + 1, 8, 2);
-        ctx.fillStyle = col.calyxLight;
-        ctx.fillRect(baseX + 5, headY + 1, 4, 1);
-
-        ctx.fillStyle = col.outline;
-        ctx.fillRect(baseX + 3, headY + 2, 10, 6);
-        ctx.fillStyle = col.body;
-        ctx.fillRect(baseX + 4, headY + 3, 8, 5);
-        ctx.fillStyle = col.mask;
-        ctx.fillRect(baseX + 4, headY + 3, 8, 4);
-
-        if (enemy.state === 16) {
-          ctx.fillStyle = col.eyeHole;
-          ctx.fillRect(baseX + 5, headY + 4, 2, 2);
-          ctx.fillRect(baseX + 9, headY + 4, 2, 2);
-          ctx.fillStyle = col.eye;
-          ctx.fillRect(baseX + 5, headY + 5, 1, 1);
-          ctx.fillRect(baseX + 10, headY + 5, 1, 1);
-        }
-
-        ctx.fillStyle = col.limb;
-        ctx.fillRect(baseX + 1, lidY + (phase ? 0 : 2), 2, 3);
-        ctx.fillRect(baseX + 13, lidY + (phase ? 2 : 0), 2, 3);
-
-        if (enemy.state === 16) {
-          ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
-          ctx.fillRect(baseX + 7, lidY - 7, 2, 2);
-        }
-        ctx.restore();
-        return;
-      }
-
-      const isLeft = ((enemy.facing || enemy.dir) & 2) !== 0;
-      const stepPhase = (enemy.animCount >> 2) & 1;
-      const isDoorIn = enemy.state === 3 && enemy.doorStage === 1;
-      const isDoorOut = enemy.state === 3 && enemy.doorStage === 2;
-      const isDoorDeep = isDoorIn || isDoorOut;
-      const isFrontPause =
-        (enemy.state === 2 && (enemy.ladderStage === 0 || enemy.ladderStage === 9)) ||
-        (enemy.state === 0 && enemy.isLadderPose);
-      const isClimbMove = enemy.state === 2 && !isFrontPause;
-      const climbOdd = (enemy.ladderStage & 1) !== 0;
-      const f = world ? world.f : 0;
-      const drawX = enemy.state === 4 ? baseX + (((f >> 1) & 1) ? 1 : -1) : baseX;
-
-      ctx.save();
-      if (isBack) {
-        ctx.globalAlpha = 0.85;
-      }
-      if (isDoorDeep) {
-        ctx.globalAlpha = isBack ? 0.72 : 0.88;
-        ctx.translate(drawX + 8, drawY + 11);
-        ctx.scale(0.84, 0.94);
-        ctx.translate(-(drawX + 8), -(drawY + 11));
-      }
-      if (enemy.state === 10) {
-        ctx.translate(drawX + 8, drawY + 11);
-        ctx.scale(1, -1);
-        ctx.translate(-(drawX + 8), -(drawY + 11));
-      }
-
-      // 茎・緑のヘタ
-      ctx.fillStyle = col.calyx;
-      ctx.fillRect(drawX + 7, drawY, 2, 2);
-      ctx.fillRect(drawX + 4, drawY + 2, 8, 2);
-      ctx.fillStyle = col.calyxLight;
-      ctx.fillRect(drawX + 5, drawY + 2, 4, 1);
-
-      // 紫のナス型ボディ（下が少しふっくらした丸み）
-      ctx.fillStyle = col.outline;
-      ctx.fillRect(drawX + 3, drawY + 3, 10, 12);
-      ctx.fillRect(drawX + 2, drawY + 7, 12, 7);
-      ctx.fillStyle = col.body;
-      ctx.fillRect(drawX + 4, drawY + 4, 8, 10);
-      ctx.fillRect(drawX + 3, drawY + 8, 10, 5);
-      ctx.fillStyle = col.highlight;
-      ctx.fillRect(drawX + 4, drawY + 5, 3, 2);
-
-      // 白い仮面＆目（ドア入り奥向き時は背中扱い、出向き・はしご時は正面2つ目）
-      if (isDoorIn) {
-        // 後ろ向き表現のため仮面・目を描かない
-      } else if (isDoorOut || isFrontPause || isClimbMove) {
-        ctx.fillStyle = col.mask;
-        ctx.fillRect(drawX + 4, drawY + 6, 8, 6);
-        ctx.fillStyle = col.maskShade;
-        ctx.fillRect(drawX + 4, drawY + 11, 8, 1);
-        ctx.fillStyle = col.eyeHole;
-        ctx.fillRect(drawX + 5, drawY + 8, 2, 2);
-        ctx.fillRect(drawX + 9, drawY + 8, 2, 2);
-        ctx.fillStyle = col.eye;
-        ctx.fillRect(drawX + 5, drawY + 8, 1, 2);
-        ctx.fillRect(drawX + 10, drawY + 8, 1, 2);
-      } else {
-        const maskX = isLeft ? drawX + 3 : drawX + 6;
-        const eyeX = isLeft ? drawX + 4 : drawX + 10;
-        ctx.fillStyle = col.mask;
-        ctx.fillRect(maskX, drawY + 6, 7, 6);
-        ctx.fillStyle = col.maskShade;
-        ctx.fillRect(maskX, drawY + 11, 7, 1);
-        ctx.fillStyle = col.eyeHole;
-        ctx.fillRect(eyeX, drawY + 8, 2, 2);
-        ctx.fillStyle = col.eye;
-        ctx.fillRect(isLeft ? eyeX : eyeX + 1, drawY + 8, 1, 2);
-      }
-
-      // 腕
-      ctx.fillStyle = col.limb;
-      if (isFrontPause) {
-        ctx.fillRect(drawX + 1, drawY + 6, 2, 5);
-        ctx.fillRect(drawX + 13, drawY + 6, 2, 5);
-      } else if (isClimbMove) {
-        ctx.fillRect(drawX + 1, drawY + (climbOdd ? 4 : 9), 2, 4);
-        ctx.fillRect(drawX + 13, drawY + (climbOdd ? 9 : 4), 2, 4);
-      } else {
-        ctx.fillRect(drawX + 1, drawY + 9, 2, 4);
-        ctx.fillRect(drawX + 13, drawY + 9, 2, 4);
-      }
-
-      // 二本足
-      ctx.fillStyle = col.limb;
-      if (enemy.state === 5) {
-        ctx.fillRect(drawX + 2, drawY + 15, 4, 6);
-        ctx.fillRect(drawX + 10, drawY + 15, 4, 6);
-      } else if (isFrontPause) {
-        ctx.fillRect(drawX + 3, drawY + 15, 3, 7);
-        ctx.fillRect(drawX + 10, drawY + 15, 3, 7);
-      } else if (isClimbMove) {
-        ctx.fillRect(drawX + 4, drawY + 15, 3, climbOdd ? 5 : 7);
-        ctx.fillRect(drawX + 9, drawY + 15, 3, climbOdd ? 7 : 5);
-      } else if (enemy.state === 1 || enemy.state === 3) {
-        ctx.fillRect(drawX + 4, drawY + 15, 3, stepPhase ? 7 : 5);
-        ctx.fillRect(drawX + 9, drawY + 15, 3, stepPhase ? 5 : 7);
-      } else {
-        ctx.fillRect(drawX + 4, drawY + 15, 3, 7);
-        ctx.fillRect(drawX + 9, drawY + 15, 3, 7);
-      }
-
-      ctx.restore();
-
-      // State 4 スタン硬直中の星エフェクト
-      if (enemy.state === 4) {
-        const sx1 = drawX + 7 + Math.round(Math.cos(f * 0.35) * 5);
-        const sx2 = drawX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
-        ctx.fillStyle = isBack ? "#7084a8" : "#ffec48";
-        ctx.fillRect(sx1, drawY - 3, 2, 2);
-        ctx.fillStyle = isBack ? "#9cb0d4" : "#ffffff";
-        ctx.fillRect(sx2, drawY - 1, 2, 2);
-      }
-    }
-
-    drawEnemyAt(enemy, baseX, drawY, world) {
-      if (enemy.enemyType === "eggplant") {
-        this.drawEggplantAt(enemy, baseX, drawY, world);
-        return;
-      }
-
-      const ctx = this.ctx;
-      const isBack = !!enemy.isBack;
-      const isFast = enemy.enemyType === "spanagonFast";
-      const col = isBack
-        ? {
-            outline: "#121828",
-            body: "#25324e",
-            highlight: "#3a4d75",
-            horn: "#465878",
-            arm: "#1c273e",
-            eyeWhite: "#687898",
-            eyePupil: "#384460"
-          }
-        : isFast
-          ? {
-              outline: "#0b2a38",
-              body: "#197286",
-              highlight: "#3fa4ba",
-              horn: "#d4982a",
-              arm: "#145364",
-              eyeWhite: "#dce6ee",
-              eyePupil: "#cc2222"
-            }
-          : {
-              outline: "#184c5c",
-              body: "#36b8c8",
-              highlight: "#7cf0f8",
-              horn: "#ffe060",
-              arm: "#2890a0",
-              eyeWhite: "#ffffff",
-              eyePupil: "#e03030"
-            };
-
-      if (enemy.state === 15 || enemy.state === 16) {
-        const f = world ? world.f : 0;
-        const phase = (f >> 2) & 1;
-        const lidY = drawY - 4;
-        const headY = enemy.state === 15 ? (lidY + 4) : (lidY + (phase ? -3 : -1));
-
-        ctx.save();
-        if (isBack) ctx.globalAlpha = 0.85;
-        ctx.fillStyle = col.horn;
-        ctx.fillRect(baseX + 4, headY, 2, 2);
-        ctx.fillRect(baseX + 10, headY, 2, 2);
-        ctx.fillStyle = col.outline;
-        ctx.fillRect(baseX + 3, headY + 2, 10, 6);
-        ctx.fillStyle = col.body;
-        ctx.fillRect(baseX + 4, headY + 3, 8, 5);
-        ctx.fillStyle = col.highlight;
-        ctx.fillRect(baseX + 5, headY + 3, 6, 1);
-
-        if (enemy.state === 16) {
-          ctx.fillStyle = col.eyeWhite;
-          ctx.fillRect(baseX + 5, headY + 5, 2, 2);
-          ctx.fillRect(baseX + 9, headY + 5, 2, 2);
-          ctx.fillStyle = col.eyePupil;
-          ctx.fillRect(baseX + 5, headY + 6, 1, 1);
-          ctx.fillRect(baseX + 10, headY + 6, 1, 1);
-        }
-
-        ctx.fillStyle = col.arm;
-        ctx.fillRect(baseX + 1, lidY + (phase ? 0 : 2), 2, 3);
-        ctx.fillRect(baseX + 13, lidY + (phase ? 2 : 0), 2, 3);
-
-        if (enemy.state === 16) {
-          ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
-          ctx.fillRect(baseX + 7, lidY - 7, 2, 2);
-        }
-        ctx.restore();
-        return;
-      }
-
-      const isLeft = ((enemy.facing || enemy.dir) & 2) !== 0;
-      const stepPhase = (enemy.animCount >> 2) & 1;
-      const isDoorIn = enemy.state === 3 && enemy.doorStage === 1;
-      const isDoorOut = enemy.state === 3 && enemy.doorStage === 2;
-      const isDoorDeep = isDoorIn || isDoorOut;
-      const isFrontPause =
-        (enemy.state === 2 && (enemy.ladderStage === 0 || enemy.ladderStage === 9)) ||
-        (enemy.state === 0 && enemy.isLadderPose);
-      const isClimbMove = enemy.state === 2 && !isFrontPause;
-      const climbOdd = (enemy.ladderStage & 1) !== 0;
-      const f = world ? world.f : 0;
-      const drawX = enemy.state === 4 ? baseX + (((f >> 1) & 1) ? 1 : -1) : baseX;
-
-      ctx.save();
-      if (isBack) {
-        ctx.globalAlpha = 0.85;
-      }
-      if (isDoorDeep) {
-        ctx.globalAlpha = isBack ? 0.72 : 0.88;
-        ctx.translate(drawX + 8, drawY + 11);
-        ctx.scale(0.84, 0.94);
-        ctx.translate(-(drawX + 8), -(drawY + 11));
-      }
-      if (enemy.state === 10) {
-        ctx.translate(drawX + 8, drawY + 11);
-        ctx.scale(1, -1);
-        ctx.translate(-(drawX + 8), -(drawY + 11));
-      }
-
-      // 二本足の仮ドット描画（通常スパナは明るめシアン、高速色違いはやや濃いシアン、裏は暗いシルエット）
-      ctx.fillStyle = col.outline;
-      ctx.fillRect(drawX + 3, drawY + 3, 10, 12);
-      ctx.fillStyle = col.body;
-      ctx.fillRect(drawX + 4, drawY + 4, 8, 10);
-      ctx.fillStyle = col.highlight;
-      ctx.fillRect(drawX + 5, drawY + 5, 6, 2);
-
-      // 頭の角・スパナ風突起
-      ctx.fillStyle = col.horn;
-      ctx.fillRect(drawX + 4, drawY + 1, 2, 2);
-      ctx.fillRect(drawX + 10, drawY + 1, 2, 2);
-
-      // 目（ドア入り奥向き時は背中扱い、出向き・はしご時は正面2つ目）
-      if (isDoorIn) {
-        // 後ろ向き表現のため目を描かない
-      } else if (isDoorOut || isFrontPause || isClimbMove) {
-        ctx.fillStyle = col.eyeWhite;
-        ctx.fillRect(drawX + 5, drawY + 7, 2, 3);
-        ctx.fillRect(drawX + 9, drawY + 7, 2, 3);
-        ctx.fillStyle = col.eyePupil;
-        ctx.fillRect(drawX + 5, drawY + 8, 1, 2);
-        ctx.fillRect(drawX + 10, drawY + 8, 1, 2);
-      } else {
-        ctx.fillStyle = col.eyeWhite;
-        ctx.fillRect(isLeft ? drawX + 4 : drawX + 9, drawY + 7, 3, 3);
-        ctx.fillStyle = col.eyePupil;
-        ctx.fillRect(isLeft ? drawX + 4 : drawX + 11, drawY + 8, 1, 2);
-      }
-
-      // 腕
-      ctx.fillStyle = col.arm;
-      if (isFrontPause) {
-        ctx.fillRect(drawX + 1, drawY + 6, 2, 5);
-        ctx.fillRect(drawX + 13, drawY + 6, 2, 5);
-      } else if (isClimbMove) {
-        ctx.fillRect(drawX + 1, drawY + (climbOdd ? 4 : 9), 2, 4);
-        ctx.fillRect(drawX + 13, drawY + (climbOdd ? 9 : 4), 2, 4);
-      } else {
-        ctx.fillRect(drawX + 2, drawY + 9, 2, 4);
-        ctx.fillRect(drawX + 12, drawY + 9, 2, 4);
-      }
-
-      // 二本足
-      ctx.fillStyle = col.outline;
-      if (enemy.state === 5) {
-        ctx.fillRect(drawX + 2, drawY + 15, 4, 6);
-        ctx.fillRect(drawX + 10, drawY + 15, 4, 6);
-      } else if (isFrontPause) {
-        ctx.fillRect(drawX + 3, drawY + 15, 3, 7);
-        ctx.fillRect(drawX + 10, drawY + 15, 3, 7);
-      } else if (isClimbMove) {
-        ctx.fillRect(drawX + 4, drawY + 15, 3, climbOdd ? 5 : 7);
-        ctx.fillRect(drawX + 9, drawY + 15, 3, climbOdd ? 7 : 5);
-      } else if (enemy.state === 1 || enemy.state === 3) {
-        ctx.fillRect(drawX + 4, drawY + 15, 3, stepPhase ? 7 : 5);
-        ctx.fillRect(drawX + 9, drawY + 15, 3, stepPhase ? 5 : 7);
-      } else {
-        ctx.fillRect(drawX + 4, drawY + 15, 3, 7);
-        ctx.fillRect(drawX + 9, drawY + 15, 3, 7);
-      }
-
-      ctx.restore();
-
-      // State 4 スタン硬直中の星エフェクト
-      if (enemy.state === 4) {
-        const sx1 = drawX + 7 + Math.round(Math.cos(f * 0.35) * 5);
-        const sx2 = drawX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
-        ctx.fillStyle = isBack ? "#7084a8" : "#ffec48";
-        ctx.fillRect(sx1, drawY - 3, 2, 2);
-        ctx.fillStyle = isBack ? "#9cb0d4" : "#ffffff";
-        ctx.fillRect(sx2, drawY - 1, 2, 2);
-      }
-    }
-
-    drawEnemy(enemy, worldWidth, world) {
-      const drawY = enemy.y - 22;
-      this.drawEnemyAt(enemy, enemy.x, drawY, world);
-      if (enemy.x > worldWidth - 16) {
-        this.drawEnemyAt(enemy, enemy.x - worldWidth, drawY, world);
-      }
-      if (enemy.x < 16) {
-        this.drawEnemyAt(enemy, enemy.x + worldWidth, drawY, world);
-      }
-    }
   }
 
-  root.WreckRender = { Renderer };
+  root.WreckRender = {
+    Renderer,
+    bakeSprite,
+    makeSpriteSet
+  };
 })(typeof globalThis !== "undefined" ? globalThis : window);
