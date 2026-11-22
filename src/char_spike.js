@@ -386,7 +386,7 @@
   Object.assign(R.Renderer.prototype, {
     initSpikeSprites() {
       if (typeof makeSpriteSet !== "function") return;
-      this.spikeSprites = makeSpriteSet(
+      this.endoSpikeSprites = makeSpriteSet(
         {
           idle: UPPER_ARM_FIXED.concat(LOWER_IDLE),
           foot0: UPPER_ARM_FIXED.concat(LOWER_FOOT_0),
@@ -502,21 +502,21 @@
         // 腹側（正面向き・はしご昇降中）：背中の奥に斜めマウントされたハンマーが肩と腰から覗く
         const headX = isLeft ? baseX + 10 : baseX + 1;
         const headY = drawY + 5;
-        ctx.fillStyle = "#181d26";
+        ctx.fillStyle = "#222936";
         for (let i = 0; i < 10; i++) {
           const px = isLeft ? (baseX + 11 - i * 0.7) : (baseX + 4 + i * 0.7);
           ctx.fillRect(Math.round(px), drawY + 8 + i, 2, 2);
         }
-        ctx.fillStyle = "#525e73";
+        ctx.fillStyle = "#8a9ab4";
         for (let i = 0; i < 9; i++) {
           const px = isLeft ? (baseX + 11 - i * 0.7) : (baseX + 4 + i * 0.7);
           ctx.fillRect(Math.round(px), drawY + 8 + i, 1, 1);
         }
-        ctx.fillStyle = "#222834";
+        ctx.fillStyle = "#28303e";
         ctx.fillRect(headX, headY, 5, 4);
-        ctx.fillStyle = "#6c7a92";
+        ctx.fillStyle = "#8a9ab4";
         ctx.fillRect(headX + 1, headY + 1, 3, 2);
-        ctx.fillStyle = "#bccae0";
+        ctx.fillStyle = "#dce8fa";
         ctx.fillRect(headX + 1, headY + 1, 2, 1);
         return;
       }
@@ -527,18 +527,18 @@
       const gripStartX = isLeft ? baseX + 12 : baseX + 3;
       const gripDir = isLeft ? -1 : 1;
 
-      ctx.fillStyle = "#1c222e";
+      ctx.fillStyle = "#222936";
       ctx.fillRect(gripStartX, drawY + 8, 2, 3);
       ctx.fillRect(gripStartX + gripDir, drawY + 11, 2, 4);
-      ctx.fillStyle = "#5c687d";
+      ctx.fillStyle = "#8a9ab4";
       ctx.fillRect(gripStartX, drawY + 8, 1, 3);
       ctx.fillRect(gripStartX + gripDir, drawY + 11, 1, 3);
 
-      ctx.fillStyle = "#222834";
+      ctx.fillStyle = "#28303e";
       ctx.fillRect(headX, headY, 5, 4);
-      ctx.fillStyle = "#6c7a92";
+      ctx.fillStyle = "#8a9ab4";
       ctx.fillRect(headX + (isLeft ? 1 : 0), headY + 1, 4, 2);
-      ctx.fillStyle = "#d0dcf0";
+      ctx.fillStyle = "#dce8fa";
       ctx.fillRect(headX + (isLeft ? 2 : 1), headY + 1, 2, 1);
       ctx.fillStyle = "#e03030";
       ctx.fillRect(headX + (isLeft ? 3 : 1), headY + 2, 1, 1);
@@ -563,7 +563,7 @@
       const headMain = "#8897b0";
       const headHi = "#d4e2f6";
       const gripDark = "#222834";
-      const grip = "#68768c";
+      const grip = "#8a9ab4";
 
       if (phase === "pull" || phase === "return") {
         const hx = isLeft ? baseX + 11 : baseX - 2;
@@ -650,8 +650,8 @@
     },
 
     drawSpikeAt(slot, baseX, baseDrawY, world) {
-      if (!this.spikeSprites) return;
-      const sprites = this.spikeSprites;
+      if (!this.endoSpikeSprites) return;
+      const sprites = this.endoSpikeSprites;
       const ctx = this.ctx;
       const faceVal = slot.facing || slot.dir;
       const facing = (faceVal & LEFT) ? "L" : "R";
