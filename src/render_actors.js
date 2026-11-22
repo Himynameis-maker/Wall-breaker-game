@@ -27,6 +27,9 @@
 
   Object.assign(R.Renderer.prototype, {
     initActorSprites() {
+      if (typeof this.initPlayerSprites === "function") {
+        this.initPlayerSprites();
+      }
       if (S.PALETTE_WORKER && S.PLAYER_IDLE && typeof makeSpriteSet === "function") {
         this.marioSprites = makeSpriteSet(
           {
@@ -252,6 +255,10 @@
     },
 
     drawActor(slot, sprites, worldWidth, world) {
+      if (slot.isMario && typeof this.drawPlayer === "function") {
+        this.drawPlayer(slot, worldWidth, world);
+        return;
+      }
       const drawY = slot.y - 26 + this.getLadderVisualOffsetY(slot);
       this.drawActorAt(slot, sprites, slot.x, drawY, world);
       if (slot.x > worldWidth - 16) {
