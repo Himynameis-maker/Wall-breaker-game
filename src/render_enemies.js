@@ -38,7 +38,7 @@
         const f = world ? world.f : 0;
         const phase = (f >> 2) & 1;
         const lidY = drawY - 4;
-        const headY = enemy.state === 15 ? (lidY + 4) : (lidY + (phase ? -3 : -1));
+        const headY = enemy.state === 15 ? (lidY - 2) : (lidY - 7 + (phase ? -1 : 0));
 
         ctx.save();
         if (isBack) ctx.globalAlpha = 0.85;
@@ -65,12 +65,17 @@
         }
 
         ctx.fillStyle = col.limb;
-        ctx.fillRect(baseX + 1, lidY + (phase ? 0 : 2), 2, 3);
-        ctx.fillRect(baseX + 13, lidY + (phase ? 2 : 0), 2, 3);
+        if (enemy.state === 15) {
+          ctx.fillRect(baseX + 1, lidY - 4, 2, 3);
+          ctx.fillRect(baseX + 13, lidY - 4, 2, 3);
+        } else {
+          ctx.fillRect(baseX + 1, lidY - (phase ? 5 : 3), 2, 3);
+          ctx.fillRect(baseX + 13, lidY - (phase ? 3 : 5), 2, 3);
+        }
 
         if (enemy.state === 16) {
           ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
-          ctx.fillRect(baseX + 7, lidY - 7, 2, 2);
+          ctx.fillRect(baseX + 7, lidY - 10, 2, 2);
         }
         ctx.restore();
         return;
@@ -237,7 +242,7 @@
         const f = world ? world.f : 0;
         const phase = (f >> 2) & 1;
         const lidY = drawY - 4;
-        const headY = enemy.state === 15 ? (lidY + 4) : (lidY + (phase ? -3 : -1));
+        const headY = enemy.state === 15 ? (lidY - 2) : (lidY - 7 + (phase ? -1 : 0));
 
         ctx.save();
         if (isBack) ctx.globalAlpha = 0.85;
@@ -261,12 +266,17 @@
         }
 
         ctx.fillStyle = col.arm;
-        ctx.fillRect(baseX + 1, lidY + (phase ? 0 : 2), 2, 3);
-        ctx.fillRect(baseX + 13, lidY + (phase ? 2 : 0), 2, 3);
+        if (enemy.state === 15) {
+          ctx.fillRect(baseX + 1, lidY - 4, 2, 3);
+          ctx.fillRect(baseX + 13, lidY - 4, 2, 3);
+        } else {
+          ctx.fillRect(baseX + 1, lidY - (phase ? 5 : 3), 2, 3);
+          ctx.fillRect(baseX + 13, lidY - (phase ? 3 : 5), 2, 3);
+        }
 
         if (enemy.state === 16) {
           ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
-          ctx.fillRect(baseX + 7, lidY - 7, 2, 2);
+          ctx.fillRect(baseX + 7, lidY - 10, 2, 2);
         }
         ctx.restore();
         return;
