@@ -580,7 +580,10 @@
       this.drawActor(world.spike, this.spikeSprites, w, world);
       if (world.enemies) {
         for (const enemy of world.enemies) {
-          this.drawEnemy(enemy, w, world);
+          if (enemy.isBack) this.drawEnemy(enemy, w, world);
+        }
+        for (const enemy of world.enemies) {
+          if (!enemy.isBack) this.drawEnemy(enemy, w, world);
         }
       }
       this.drawActor(world.mario, this.marioSprites, w, world);
@@ -852,44 +855,71 @@
 
     drawEnemyAt(enemy, baseX, drawY, world) {
       const ctx = this.ctx;
+      const isBack = !!enemy.isBack;
+      const col = isBack
+        ? {
+            outline: "#121828",
+            body: "#25324e",
+            highlight: "#3a4d75",
+            horn: "#465878",
+            arm: "#1c273e",
+            eyeWhite: "#687898",
+            eyePupil: "#384460"
+          }
+        : {
+            outline: "#184c5c",
+            body: "#36b8c8",
+            highlight: "#7cf0f8",
+            horn: "#ffe060",
+            arm: "#2890a0",
+            eyeWhite: "#ffffff",
+            eyePupil: "#e03030"
+          };
+
       if (enemy.state === 15 || enemy.state === 16) {
         const f = world ? world.f : 0;
         const phase = (f >> 2) & 1;
         const lidY = drawY - 4;
         const headY = enemy.state === 15 ? (lidY + 4) : (lidY + (phase ? -3 : -1));
 
-        ctx.fillStyle = "#ffe060";
+        ctx.save();
+        if (isBack) ctx.globalAlpha = 0.85;
+        ctx.fillStyle = col.horn;
         ctx.fillRect(baseX + 4, headY, 2, 2);
         ctx.fillRect(baseX + 10, headY, 2, 2);
-        ctx.fillStyle = "#184c5c";
+        ctx.fillStyle = col.outline;
         ctx.fillRect(baseX + 3, headY + 2, 10, 6);
-        ctx.fillStyle = "#36b8c8";
+        ctx.fillStyle = col.body;
         ctx.fillRect(baseX + 4, headY + 3, 8, 5);
-        ctx.fillStyle = "#7cf0f8";
+        ctx.fillStyle = col.highlight;
         ctx.fillRect(baseX + 5, headY + 3, 6, 1);
 
         if (enemy.state === 16) {
-          ctx.fillStyle = "#ffffff";
+          ctx.fillStyle = col.eyeWhite;
           ctx.fillRect(baseX + 5, headY + 5, 2, 2);
           ctx.fillRect(baseX + 9, headY + 5, 2, 2);
-          ctx.fillStyle = "#e03030";
+          ctx.fillStyle = col.eyePupil;
           ctx.fillRect(baseX + 5, headY + 6, 1, 1);
           ctx.fillRect(baseX + 10, headY + 6, 1, 1);
         }
 
-        ctx.fillStyle = "#2890a0";
+        ctx.fillStyle = col.arm;
         ctx.fillRect(baseX + 1, lidY + (phase ? 0 : 2), 2, 3);
         ctx.fillRect(baseX + 13, lidY + (phase ? 2 : 0), 2, 3);
 
         if (enemy.state === 16) {
-          ctx.fillStyle = phase ? "#ffec48" : "#ffffff";
+          ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
           ctx.fillRect(baseX + 7, lidY - 7, 2, 2);
         }
+        ctx.restore();
         return;
       }
 
       const isLeft = ((enemy.facing || enemy.dir) & 2) !== 0;
       const stepPhase = (enemy.animCount >> 2) & 1;
+      const isDoorIn = enemy.state === 3 && enemy.doorStage === 1;
+      const isDoorOut = enemy.state === 3 && enemy.doorStage === 2;
+      const isDoorDeep = isDoorIn || isDoorOut;
       const isFrontPause =
         (enemy.state === 2 && (enemy.ladderStage === 0 || enemy.ladderStage === 9)) ||
         (enemy.state === 0 && enemy.isLadderPose);
@@ -899,42 +929,53 @@
       const drawX = enemy.state === 4 ? baseX + (((f >> 1) & 1) ? 1 : -1) : baseX;
 
       ctx.save();
+      if (isBack) {
+        ctx.globalAlpha = 0.85;
+      }
+      if (isDoorDeep) {
+        ctx.globalAlpha = isBack ? 0.72 : 0.88;
+        ctx.translate(drawX + 8, drawY + 11);
+        ctx.scale(0.84, 0.94);
+        ctx.translate(-(drawX + 8), -(drawY + 11));
+      }
       if (enemy.state === 10) {
         ctx.translate(drawX + 8, drawY + 11);
         ctx.scale(1, -1);
         ctx.translate(-(drawX + 8), -(drawY + 11));
       }
 
-      // 二本足の仮ドット描画（シアン系モンスター）
-      ctx.fillStyle = "#184c5c";
+      // 二本足の仮ドット描画（表はシアン系、裏は暗いシルエット）
+      ctx.fillStyle = col.outline;
       ctx.fillRect(drawX + 3, drawY + 3, 10, 12);
-      ctx.fillStyle = "#36b8c8";
+      ctx.fillStyle = col.body;
       ctx.fillRect(drawX + 4, drawY + 4, 8, 10);
-      ctx.fillStyle = "#7cf0f8";
+      ctx.fillStyle = col.highlight;
       ctx.fillRect(drawX + 5, drawY + 5, 6, 2);
 
       // 頭の角・スパナ風突起
-      ctx.fillStyle = "#ffe060";
+      ctx.fillStyle = col.horn;
       ctx.fillRect(drawX + 4, drawY + 1, 2, 2);
       ctx.fillRect(drawX + 10, drawY + 1, 2, 2);
 
-      // 目（はしご踏切・昇降中は正面向き2つ目）
-      if (isFrontPause || isClimbMove) {
-        ctx.fillStyle = "#ffffff";
+      // 目（ドア入り奥向き時は背中扱い、出向き・はしご時は正面2つ目）
+      if (isDoorIn) {
+        // 後ろ向き表現のため目を描かない
+      } else if (isDoorOut || isFrontPause || isClimbMove) {
+        ctx.fillStyle = col.eyeWhite;
         ctx.fillRect(drawX + 5, drawY + 7, 2, 3);
         ctx.fillRect(drawX + 9, drawY + 7, 2, 3);
-        ctx.fillStyle = "#e03030";
+        ctx.fillStyle = col.eyePupil;
         ctx.fillRect(drawX + 5, drawY + 8, 1, 2);
         ctx.fillRect(drawX + 10, drawY + 8, 1, 2);
       } else {
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = col.eyeWhite;
         ctx.fillRect(isLeft ? drawX + 4 : drawX + 9, drawY + 7, 3, 3);
-        ctx.fillStyle = "#e03030";
+        ctx.fillStyle = col.eyePupil;
         ctx.fillRect(isLeft ? drawX + 4 : drawX + 11, drawY + 8, 1, 2);
       }
 
-      // 腕（踏切時は両手ではしごを掴む、昇降中は交互、歩行は体側）
-      ctx.fillStyle = "#2890a0";
+      // 腕
+      ctx.fillStyle = col.arm;
       if (isFrontPause) {
         ctx.fillRect(drawX + 1, drawY + 6, 2, 5);
         ctx.fillRect(drawX + 13, drawY + 6, 2, 5);
@@ -946,8 +987,8 @@
         ctx.fillRect(drawX + 12, drawY + 9, 2, 4);
       }
 
-      // 二本足（踏切時は両足で踏ん張り、昇降中は交互に掛け替え）
-      ctx.fillStyle = "#184c5c";
+      // 二本足
+      ctx.fillStyle = col.outline;
       if (enemy.state === 5) {
         ctx.fillRect(drawX + 2, drawY + 15, 4, 6);
         ctx.fillRect(drawX + 10, drawY + 15, 4, 6);
@@ -957,7 +998,7 @@
       } else if (isClimbMove) {
         ctx.fillRect(drawX + 4, drawY + 15, 3, climbOdd ? 5 : 7);
         ctx.fillRect(drawX + 9, drawY + 15, 3, climbOdd ? 7 : 5);
-      } else if (enemy.state === 1) {
+      } else if (enemy.state === 1 || enemy.state === 3) {
         ctx.fillRect(drawX + 4, drawY + 15, 3, stepPhase ? 7 : 5);
         ctx.fillRect(drawX + 9, drawY + 15, 3, stepPhase ? 5 : 7);
       } else {
@@ -971,9 +1012,9 @@
       if (enemy.state === 4) {
         const sx1 = drawX + 7 + Math.round(Math.cos(f * 0.35) * 5);
         const sx2 = drawX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
-        ctx.fillStyle = "#ffec48";
+        ctx.fillStyle = isBack ? "#7084a8" : "#ffec48";
         ctx.fillRect(sx1, drawY - 3, 2, 2);
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = isBack ? "#9cb0d4" : "#ffffff";
         ctx.fillRect(sx2, drawY - 1, 2, 2);
       }
     }
