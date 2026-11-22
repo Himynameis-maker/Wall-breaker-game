@@ -55,6 +55,9 @@
     return { totalFrames: 27, hitFrame: 14, recoverStart: 23 };
   });
 
+  const INTRO_START_CAM_Y = -122;
+  const INTRO_GROUND_OVERSHOOT = 64;
+
   // 時計針の12段階ドット座標（0=12時, 1=1時, ..., 6=6時, ..., 9=9時, ..., 11=11時）
   const TIMED_BOMB_HANDS = [
     [[0, -1], [0, -2], [0, -3], [0, -4], [0, -5]],
@@ -263,7 +266,7 @@
 
     resetCamera(world) {
       this.isIntroCamMoving = false;
-      this.camY = world.introActive ? -24 : this.getBaseCamY(world);
+      this.camY = world.introActive ? INTRO_START_CAM_Y : this.getBaseCamY(world);
     }
 
     updateCamera(world) {
@@ -279,59 +282,37 @@
       }
 
       if (world.introActive) {
-        const d1 = maxCamY - minCamY;
-        if (d1 <= 0) {
-          this.camY = minCamY;
-          this.isIntroCamMoving = false;
-          return;
-        }
-
         const t = world.introFrame || 0;
         const total = world.introTotalFrames || 288;
-        const holdStart = 18;
+        const holdStart = 12;
         const holdEnd = 18;
-        const d2 = maxCamY - baseCamY;
-        const ease = p => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, p)));
+        const moveBudget = Math.max(60, total - holdStart - holdEnd);
+        const introStart = INTRO_START_CAM_Y;
+        const introBottom = maxCamY + INTRO_GROUND_OVERSHOOT;
+        const dDown = Math.max(1, introBottom - introStart);
+        const dUp = Math.max(1, introBottom - baseCamY);
+        const downFrames = Math.max(30, Math.min(moveBudget - 30, Math.round(moveBudget * (dDown / (dDown + dUp)))));
+        const upFrames = moveBudget - downFrames;
+        const downEnd = holdStart + downFrames;
+        const upEnd = holdStart + moveBudget;
 
-        if (d2 <= 0) {
-          const moveEnd = total - holdEnd;
-          if (t <= holdStart) {
-            this.camY = minCamY;
-            this.isIntroCamMoving = false;
-          } else if (t < moveEnd) {
-            const p = (t - holdStart) / (moveEnd - holdStart);
-            this.camY = minCamY + d1 * ease(p);
-            this.isIntroCamMoving = true;
-          } else {
-            this.camY = baseCamY;
-            this.isIntroCamMoving = false;
-          }
+        if (t <= holdStart) {
+          this.camY = introStart;
+          this.isIntroCamMoving = false;
+        } else if (t < downEnd) {
+          const p = (t - holdStart) / downFrames;
+          this.camY = introStart + dDown * p;
+          this.isIntroCamMoving = true;
+        } else if (t === downEnd) {
+          this.camY = introBottom;
+          this.isIntroCamMoving = true;
+        } else if (t < upEnd) {
+          const p = (t - downEnd) / upFrames;
+          this.camY = introBottom - dUp * p;
+          this.isIntroCamMoving = true;
         } else {
-          const holdMid = 12;
-          const moveBudget = total - holdStart - holdMid - holdEnd;
-          const downFrames = Math.max(30, Math.min(moveBudget - 30, Math.round(moveBudget * (d1 / (d1 + d2)))));
-          const downEnd = holdStart + downFrames;
-          const midEnd = downEnd + holdMid;
-          const upEnd = total - holdEnd;
-
-          if (t <= holdStart) {
-            this.camY = minCamY;
-            this.isIntroCamMoving = false;
-          } else if (t < downEnd) {
-            const p = (t - holdStart) / downFrames;
-            this.camY = minCamY + d1 * ease(p);
-            this.isIntroCamMoving = true;
-          } else if (t <= midEnd) {
-            this.camY = maxCamY;
-            this.isIntroCamMoving = false;
-          } else if (t < upEnd) {
-            const p = (t - midEnd) / (upEnd - midEnd);
-            this.camY = maxCamY - d2 * ease(p);
-            this.isIntroCamMoving = true;
-          } else {
-            this.camY = baseCamY;
-            this.isIntroCamMoving = false;
-          }
+          this.camY = baseCamY;
+          this.isIntroCamMoving = false;
         }
         return;
       }
@@ -1080,12 +1061,14 @@
       if (this.floorBlockPattern) {
         const floorBottomStartY = world.rows * 32 + 6;
         const viewBottomY = camOffset + h;
-        const fillH = Math.max(24, viewBottomY - floorBottomStartY);
-        ctx.save();
-        ctx.translate(0, floorBottomStartY);
-        ctx.fillStyle = this.floorBlockPattern;
-        ctx.fillRect(0, 0, w, fillH);
-        ctx.restore();
+        const fillH = viewBottomY - floorBottomStartY;
+        if (fillH > 0) {
+          ctx.save();
+          ctx.translate(0, floorBottomStartY);
+          ctx.fillStyle = this.floorBlockPattern;
+          ctx.fillRect(0, 0, w, fillH);
+          ctx.restore();
+        }
       }
 
       // 床（穴・落下開始穴 $0C および同種連続はしごの中間以外は鉄骨を描画、最下段は常に足場あり）
