@@ -60,6 +60,19 @@
       return slot.isBack ? 1 : 0;
     }
 
+    isLadderTileForSlot(slot, t) {
+      if (slot.isMario && t === TILE.SAND_LADDER) {
+        return false;
+      }
+      return isLadderTile(t);
+    }
+
+    isSandLadderTrapBelow(slot, world) {
+      return !!slot.isMario &&
+        slot.row < world.rows - 1 &&
+        world.getTile(slot.row + 1, slot.col) === TILE.SAND_LADDER;
+    }
+
     updateCR(slot, world) {
       const wx = world.wrapX(slot.x + 8);
       slot.col = Math.floor(wx / 16);
@@ -262,7 +275,7 @@
     tryStartHammer(slot, b, world) {
       if ((b & HAMMER) === 0) return false;
       const curTile = world.getTile(slot.row, slot.col);
-      if (isLadderTile(curTile) && slot.row < world.rows - 1) {
+      if (this.isLadderTileForSlot(slot, curTile) && slot.row < world.rows - 1) {
         const belowTile = world.getTile(slot.row + 1, slot.col);
         if (isSameLadderType(curTile, belowTile)) {
           return false;
@@ -279,7 +292,10 @@
       if (slot.flag & 2) {
         if (isSolidDrum(world.getTile(slot.row + 1, slot.col))) return false;
       } else {
-        if (!isFallHoleTile(world.getTile(slot.row, slot.col))) return false;
+        if (!isFallHoleTile(world.getTile(slot.row, slot.col)) &&
+            !this.isSandLadderTrapBelow(slot, world)) {
+          return false;
+        }
       }
       if (((slot.x + 3) & 0x0f) >= 6) return false;
 
@@ -300,10 +316,10 @@
 
       if (slot.state !== 1) {
         const curTile = world.getTile(slot.row, slot.col);
-        if (!isLadderTile(curTile) && !isHoleTile(curTile)) return false;
+        if (!this.isLadderTileForSlot(slot, curTile) && !isHoleTile(curTile)) return false;
         if (slot.row >= world.rows - 1) return false;
         const belowTile = world.getTile(slot.row + 1, slot.col);
-        if (!isLadderTile(belowTile)) return false;
+        if (!this.isLadderTileForSlot(slot, belowTile)) return false;
       }
 
       const dirStep = (horiz === RIGHT) ? 1 : -1;
@@ -320,7 +336,7 @@
         }
         if (slot.row < world.rows - 1) {
           const nextBelow = world.getTile(slot.row + 1, nextCol);
-          if (isLadderTile(nextBelow) && (slot.y & 0x0f) !== 0 && slot.prom < 0x1f) {
+          if (this.isLadderTileForSlot(slot, nextBelow) && (slot.y & 0x0f) !== 0 && slot.prom < 0x1f) {
             goDirectlyToApply = true;
           }
         }
@@ -337,7 +353,7 @@
       }
 
       if (!goDirectlyToApply) {
-        if (!isLadderTile(nextTile)) return false;
+        if (!this.isLadderTileForSlot(slot, nextTile)) return false;
         if (slot.row >= world.rows - 1) return false;
         const nextBelow = world.getTile(slot.row + 1, nextCol);
         if (!isSameLadderType(nextTile, nextBelow)) return false;
@@ -373,8 +389,9 @@
       const curTile = world.getTile(slot.row, slot.col);
       if (isHoleTile(curTile)) return false;
 
-      const canUp = isLadderTile(curTile);
-      const canDown = slot.row < world.rows - 1 && isLadderTile(world.getTile(slot.row + 1, slot.col));
+      const canUp = this.isLadderTileForSlot(slot, curTile);
+      const canDown = slot.row < world.rows - 1 &&
+        this.isLadderTileForSlot(slot, world.getTile(slot.row + 1, slot.col));
       let avail = (canUp ? 2 : 0) | (canDown ? 1 : 0);
       if (avail !== 0 && ((slot.x + 6) & 0x0f) >= 12) {
         avail = 0;
@@ -422,7 +439,7 @@
       const curTile = world.getTile(slot.row, slot.col);
       const belowTile = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, slot.col) : TILE.EMPTY;
       const isContAtFinish = slot.row < world.rows - 1 &&
-        isLadderTile(curTile) &&
+        this.isLadderTileForSlot(slot, curTile) &&
         (belowTile === curTile || belowTile === TILE.HOLE_PILLAR_LAD);
       if (isContAtFinish) {
         if (slot.row === 0) {
@@ -447,6 +464,15 @@
       }
       if (slot.row < world.rows - 1 && isHoleTile(world.getTile(slot.row, slot.col))) {
         this.enterKnockdown(slot);
+        return;
+      }
+      if (this.isSandLadderTrapBelow(slot, world)) {
+        slot.prom = slot.isMario ? 0 : 0x12;
+        slot.topY = slot.y;
+        slot.state = 5;
+        slot.kind = null;
+        slot.n = 0;
+        slot.avail = 0;
         return;
       }
       slot.state = 3;
@@ -612,7 +638,8 @@
           const t = world.getTile(slot.row, slot.col);
           const isHole = isFallHoleTile(t) && (slot.row < world.rows - 1);
           const isContLad = this.isContinuousLadderSegment(slot.row, slot.col, world);
-          if (!isHole && !isContLad) {
+          const isSandTrap = this.isSandLadderTrapBelow(slot, world);
+          if (!isHole && !isContLad && !isSandTrap) {
             slot.state = 0;
             slot.prom = 0;
             return;
