@@ -67,12 +67,6 @@
       return isLadderTile(t);
     }
 
-    isSandLadderTrapBelow(slot, world) {
-      return !!slot.isMario &&
-        slot.row < world.rows - 1 &&
-        world.getTile(slot.row + 1, slot.col) === TILE.SAND_LADDER;
-    }
-
     updateCR(slot, world) {
       const wx = world.wrapX(slot.x + 8);
       slot.col = Math.floor(wx / 16);
@@ -292,8 +286,11 @@
       if (slot.flag & 2) {
         if (isSolidDrum(world.getTile(slot.row + 1, slot.col))) return false;
       } else {
-        if (!isFallHoleTile(world.getTile(slot.row, slot.col)) &&
-            !this.isSandLadderTrapBelow(slot, world)) {
+        const curTile = world.getTile(slot.row, slot.col);
+        const isSandCont = slot.isMario &&
+          curTile === TILE.SAND_LADDER &&
+          world.getTile(slot.row + 1, slot.col) === TILE.SAND_LADDER;
+        if (!isFallHoleTile(curTile) && !isSandCont) {
           return false;
         }
       }
@@ -466,15 +463,6 @@
         this.enterKnockdown(slot);
         return;
       }
-      if (this.isSandLadderTrapBelow(slot, world)) {
-        slot.prom = slot.isMario ? 0 : 0x12;
-        slot.topY = slot.y;
-        slot.state = 5;
-        slot.kind = null;
-        slot.n = 0;
-        slot.avail = 0;
-        return;
-      }
       slot.state = 3;
       slot.kind = arriveKind;
       slot.n = 1;
@@ -638,8 +626,7 @@
           const t = world.getTile(slot.row, slot.col);
           const isHole = isFallHoleTile(t) && (slot.row < world.rows - 1);
           const isContLad = this.isContinuousLadderSegment(slot.row, slot.col, world);
-          const isSandTrap = this.isSandLadderTrapBelow(slot, world);
-          if (!isHole && !isContLad && !isSandTrap) {
+          if (!isHole && !isContLad) {
             slot.state = 0;
             slot.prom = 0;
             return;
