@@ -23,15 +23,16 @@
     KNOCKDOWN_DY
   } = G;
 
-  // スパナゴン統一初期速度（0xAA = 8Fのうち4回移動 = 0.5px/F）
+  // 初期速度（スパナゴン: 0xAA = 4/8速 = 0.5px/F、ナスビ仮面: 0x77 = 6/8速 = 0.75px/F）
   const SPANAGON_DEFAULT_SPEED = 0xaa;
+  const EGGPLANT_DEFAULT_SPEED = 0x77;
 
   // State 2 昇降用テーブル（ROM $CE51, $CE83 準拠）
   const ENEMY_LADDER_THRESH = [48, 46, 39, 34, 28, 23, 18, 12, 7, 2];
   const ENEMY_LADDER_RELY = [0, 3, 7, 11, 15, 19, 23, 27, 31, 32];
 
-  // State 4 加速テーブル（ROM $D10A 準拠: speedMask の 1bit数 1..8 に対応）
-  const ENEMY_ACCEL_TABLE = [0x11, 0x25, 0x55, 0xb5, 0xee, 0xfe, 0xff, 0xff];
+  // State 4 加速テーブル（ROM $D109 準拠: speedMask の 1bit数 0..8 に対応）
+  const ENEMY_ACCEL_TABLE = [0x11, 0x25, 0x55, 0xb5, 0xee, 0xfe, 0xff, 0xff, 0xff];
 
   // State 3 ドア出入り用オフセットテーブル（ROM $D055, $D067 準拠）
   const ENEMY_DOOR_RELY = [32, 32, 32, 30, 29, 29, 28, 28, 0, 28, 28, 29, 29, 30, 32, 32, 32, -1];
@@ -46,11 +47,16 @@
       this.state = 0; // 0:思考/待機, 1:歩行, 2:はしご昇降, 3:ドア出入り, 4:ダウン後硬直/加速, 5:穴落ち, 10:ダウン落下, 15:ドラム缶捕獲待機, 16:ドラム缶閉じ込め
       this.x = cfg.x != null ? cfg.x : 0;
       this.y = cfg.y != null ? cfg.y : 64;
-      this.dir = cfg.dir != null ? cfg.dir : LEFT;
-      this.facing = (this.dir & (LEFT | RIGHT)) || LEFT;
-      this.cmd = cfg.cmd != null ? cfg.cmd : this.facing;
+      const initDir = (cfg.dir & (LEFT | RIGHT)) || LEFT;
+      this.dir = initDir;
+      this.facing = (cfg.facing & (LEFT | RIGHT)) || initDir;
+      this.cmd = cfg.cmd != null
+        ? cfg.cmd
+        : (this.enemyType === "eggplant" ? (this.facing | UP) : this.facing);
       this.prevCmd = this.cmd;
-      this.speedMask = cfg.speedMask != null ? (cfg.speedMask & 0xff) : SPANAGON_DEFAULT_SPEED;
+      this.speedMask = cfg.speedMask != null
+        ? (cfg.speedMask & 0xff)
+        : (this.enemyType === "eggplant" ? EGGPLANT_DEFAULT_SPEED : SPANAGON_DEFAULT_SPEED);
       this.topY = this.y;
       this.avail = 0;
       this.row = 1;
@@ -63,6 +69,8 @@
       this.isLadderPose = false;
       this.doorStage = 0;
       this.animCount = 0;
+      this.bumpTrigger = false; // $0305 相当: 敵同士接触フラグ
+      this.bumpCooldown = 0;    // $030C 相当: 再接触クールダウン (16F)
     }
   }
 
@@ -125,6 +133,8 @@
       slot.isLadderPose = false;
       slot.ladderStage = 0;
       slot.doorStage = 0;
+      slot.bumpTrigger = false;
+      slot.bumpCooldown = 0;
     }
 
     // $C8BB 相当: 落下中ドラム缶 ($0D) による閉じ込め捕獲＆隣セル押し戻し
@@ -145,6 +155,8 @@
         slot.isLadderPose = false;
         slot.ladderStage = 0;
         slot.doorStage = 0;
+        slot.bumpTrigger = false;
+        slot.bumpCooldown = 0;
         this.snapX(slot, world);
         this.snapY(slot);
         this.updateCR(slot, world);
@@ -258,8 +270,12 @@
       return false;
     }
 
-    // $CBAE 相当: マリオとの段差・最寄りはしご・ドラム缶挟みから進行方向を決定
+    // $CBAE 相当: ナスビ仮面 (bit1=1) は思考スキップ、スパナゴンは段差・はしご・ドラム缶から向き決定
     thinkDirection(slot, world) {
+      if (slot.enemyType === "eggplant") {
+        return;
+      }
+
       const myRow = slot.row;
       const myCol = slot.col;
       const marioRow = world.mario.row;
@@ -392,11 +408,13 @@
       this.thinkDirection(slot, world);
 
       if (avail !== 3) {
-        const wantVert = slot.cmd & (UP | DOWN);
         const availVert = avail << 2;
-        if (wantVert !== availVert) {
-          slot.avail = 0;
-          return false;
+        if (slot.enemyType !== "eggplant") {
+          const wantVert = slot.cmd & (UP | DOWN);
+          if (wantVert !== availVert) {
+            slot.avail = 0;
+            return false;
+          }
         }
         slot.cmd = (slot.cmd & ~(UP | DOWN)) | availVert;
       }
@@ -474,6 +492,34 @@
       return true;
     }
 
+    // $CCEA〜$CD54 相当: 敵同士接触時、16Fに1回だけ1回分の移動を相殺して素通り
+    handleBump(slot, world) {
+      if (slot.bumpCooldown > 0) {
+        slot.bumpCooldown -= 1;
+        slot.bumpTrigger = false;
+        return;
+      }
+      if (!slot.bumpTrigger) return;
+
+      slot.bumpCooldown = 0x10;
+      slot.bumpTrigger = false;
+      if (slot.state === 1) {
+        const horiz = slot.cmd & (RIGHT | LEFT);
+        if (horiz === RIGHT) {
+          slot.x = world.wrapX(slot.x - 1);
+        } else if (horiz === LEFT) {
+          slot.x = world.wrapX(slot.x + 1);
+        }
+      } else if (slot.state === 2) {
+        const vert = slot.cmd & (UP | DOWN);
+        if (vert === UP) {
+          slot.prom = Math.max(0, slot.prom - 1);
+        } else {
+          slot.prom = Math.min(48, slot.prom + 1);
+        }
+      }
+    }
+
     resumeWalkFromIdle(slot, world, runThink, stopIfNoHoriz = false) {
       if (runThink) {
         this.thinkDirection(slot, world);
@@ -525,6 +571,7 @@
       if (this.tryEnterDoor(slot, world)) return;
       if (this.tryEnemyLadder(slot, world)) return;
       if (this.tryEnterHole(slot, world)) return;
+      this.handleBump(slot, world);
 
       const prevDir = slot.prevCmd & (RIGHT | LEFT);
       const curDir = slot.cmd & (RIGHT | LEFT);
@@ -548,6 +595,7 @@
       if (this.checkEnemyHazardHit(slot, world)) return;
       if (this.checkDrumTrap(slot, world)) return;
       if (!this.rotateSpeedMask(slot)) return;
+      this.handleBump(slot, world);
 
       // $CE8D 相当: 下り中に昇降中のはしごが壊れかけ/消滅したら上へ引き返す
       if ((slot.cmd & UP) === 0 && slot.prom >= 4) {
@@ -631,7 +679,7 @@
       slot.animCount = (slot.animCount + 1) & 0xff;
     }
 
-    // $D0D5 相当: ダウン着地後 96F 硬直 → speedMask を1段階加速して歩行再開
+    // $D0D5 相当: ダウン着地後 96F 硬直 → speedMask を ROM $D109 に従い加速して歩行再開
     stepState4(slot, world) {
       if (this.checkDrumTrap(slot, world)) return;
       slot.stopTimer -= 1;
@@ -639,7 +687,7 @@
 
       slot.stopTimer = 0;
       const bitCount = this.countBits8(slot.speedMask);
-      const tblIdx = Math.max(0, Math.min(7, bitCount - 1));
+      const tblIdx = Math.max(0, Math.min(8, bitCount));
       slot.speedMask = ENEMY_ACCEL_TABLE[tblIdx];
       slot.state = 0;
       this.resumeWalkFromIdle(slot, world, true);
@@ -778,6 +826,7 @@
 
   const api = {
     SPANAGON_DEFAULT_SPEED,
+    EGGPLANT_DEFAULT_SPEED,
     EnemyActor,
     EnemyAI
   };
