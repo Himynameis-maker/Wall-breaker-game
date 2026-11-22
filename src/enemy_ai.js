@@ -305,7 +305,7 @@
         if (scanRow >= 0 && scanRow < world.rows) {
           for (let c = 0; c < world.cols; c++) {
             const t = world.getTile(scanRow, c);
-            if (t === TILE.LADDER || t === TILE.BREAK_LADDER) {
+            if (isLadderTile(t)) {
               const dist = Math.abs(c - myCol);
               if (dist < bestDist) {
                 bestDist = dist;
@@ -389,7 +389,7 @@
       // ドラム缶頭上歩行時 ($CB8F〜$CBAD): 隣が穴($09..$0B)か「下の段が空($00)のはしご」以外は反転
       slot.prom = 0x2e;
       const nextTile = world.getTile(slot.row, nextCol);
-      if (nextTile === TILE.LADDER || nextTile === TILE.BREAK_LADDER) {
+      if (isLadderTile(nextTile)) {
         const nextBelow = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, nextCol) : TILE.EMPTY;
         if (nextBelow === TILE.EMPTY) return;
         this.reverseHoriz(slot);
@@ -403,9 +403,9 @@
     // $CEB6 相当: はしごマス中央踏破時の進入判定
     tryEnemyLadder(slot, world) {
       const curTile = world.getTile(slot.row, slot.col);
-      const canUp = curTile === TILE.LADDER || curTile === TILE.BREAK_LADDER;
+      const canUp = isLadderTile(curTile);
       const belowTile = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, slot.col) : TILE.EMPTY;
-      const canDown = slot.row < world.rows - 1 && (belowTile === TILE.LADDER || belowTile === TILE.BREAK_LADDER);
+      const canDown = slot.row < world.rows - 1 && isLadderTile(belowTile);
       const avail = (canUp ? 2 : 0) | (canDown ? 1 : 0);
 
       if (avail === 0 || (slot.x & 0x0f) !== 0) {
