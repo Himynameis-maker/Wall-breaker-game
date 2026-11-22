@@ -1,0 +1,751 @@
+(function (root) {
+  "use strict";
+
+  const G = root.WreckGame || {};
+  const LEFT = G.LEFT || 2;
+  const DOWN = G.DOWN || 4;
+  const UP = G.UP || 8;
+  const TILE = G.TILE || {
+    LADDER: 0x01,
+    SAND_LADDER: 0x02,
+    BREAK_LADDER: 0xd1
+  };
+  const isSameLadderType = G.isSameLadderType || ((a, b) =>
+    (a === TILE.LADDER && b === TILE.LADDER) ||
+    (a === TILE.BREAK_LADDER && b === TILE.BREAK_LADDER) ||
+    (a === TILE.SAND_LADDER && b === TILE.SAND_LADDER));
+
+  const R = root.WreckRender;
+  if (!R || !R.Renderer) return;
+  const makeSpriteSet = R.makeSpriteSet;
+
+  // 宇宙服パレット（顔が見えない黒バイザー＋白ボディ＋オレンジライン/グローブ）
+  const PALETTE_ASTRO = {
+    W: "#f2f6fc",
+    L: "#bcc9de",
+    D: "#637494",
+    V: "#0d1526",
+    R: "#7cd0ff",
+    O: "#ea7224",
+    P: "#a84410",
+    C: "#32a4d8",
+    B: "#435068"
+  };
+
+  // 上半身（腕固定：歩行開始 0.2s = 12F 未満用）
+  const UPPER_ARM_FIXED = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW....",
+    ".BBBBWWWCWWWW...",
+    ".BBBBWWLCWWWW...",
+    ".BBBBWWLWWWW....",
+    ".BBBLLWLLWWW....",
+    "..BBLWWOOOWW....",
+    "...BBLDWWWWW...."
+  ];
+
+  // 上半身（腕振り4コマ：歩行 0.2s = 12F 以上用）
+  const UPPER_ARM_0 = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW....",
+    ".BBBBWWWCWWWW...",
+    ".BBBBLLWCWWWP...",
+    ".BBBLLWWWWWPP...",
+    ".BBLLWWWWWWWW...",
+    "..BOOLLLLWWW....",
+    "...OODWWWWWW...."
+  ];
+  const UPPER_ARM_1 = UPPER_ARM_FIXED;
+  const UPPER_ARM_2 = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW....",
+    ".BBBBWWWCWWWW...",
+    ".BBBBWWWCWLLOO..",
+    ".BBBBWWWWLLLOO..",
+    ".BBBLLWWLLWW....",
+    "..BBLPWWWWWW....",
+    "...BBLDWWWWW...."
+  ];
+  const UPPER_ARM_3 = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW....",
+    ".BBBBWWWCWWWW...",
+    ".BBBBWWLCWWWW...",
+    ".BBBBWWLWWWW....",
+    ".BBBLLWLLWWW....",
+    "..BBLWOOWWWW....",
+    "...BBLDWWWWW...."
+  ];
+
+  const LOWER_IDLE = [
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "....LLL..LLL....",
+    "....LLL..LLL....",
+    "....DDD..DDD....",
+    "....BBB..BBB....",
+    "....BBB..BBB....",
+    "....BBBB.BBBB...",
+    "....BBBB.BBBB..."
+  ];
+
+  // 細かい足運び4コマ
+  const LOWER_FOOT_0 = [
+    "....WWWWWWWW....",
+    "....WWWDWWWW....",
+    "...DDDD..WWWW...",
+    "..DDDD....WWWW..",
+    "..DDD......LLL..",
+    "..DD.......LLL..",
+    "..BB.......DDD..",
+    ".BBB.......BBB..",
+    ".BBB.......BBBB.",
+    "...........BBBB."
+  ];
+  const LOWER_FOOT_1 = [
+    "....WWWWWWWW....",
+    "....WWWLLWWW....",
+    "....DDDWWWLL....",
+    ".....WWWW.DD....",
+    ".....WWW..BB....",
+    ".....LLL..BBB...",
+    ".....DDD........",
+    ".....BBB........",
+    ".....BBBB.......",
+    ".....BBBB......."
+  ];
+  const LOWER_FOOT_2 = [
+    "....WWWWWWWW....",
+    "....WWWWLLWW....",
+    "...WWWW..DDDD...",
+    "..WWWW....DDDD..",
+    "..LLL......DDD..",
+    "..LLL.......DD..",
+    "..DDD.......BB..",
+    "..BBB.......BBB.",
+    "..BBBB......BBB.",
+    "..BBBB.........."
+  ];
+  const LOWER_FOOT_3 = [
+    "....WWWWWWWW....",
+    "....WWLLWWWW....",
+    "....LLWWWDDD....",
+    "....DD.WWWW.....",
+    "....BB..WWW.....",
+    "...BBB..LLL.....",
+    "........DDD.....",
+    "........BBB.....",
+    ".......BBBB.....",
+    ".......BBBB....."
+  ];
+
+  // はしご（後ろ姿）
+  const ASTRO_CLIMB_HOLD = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWWWWWWW...",
+    "...WWWWWWWWWW...",
+    "...LLLLLLLLLL...",
+    "...LLLLLLLLLL...",
+    "....DDLLLLDD....",
+    "..OO.OOOOOO.OO..",
+    ".OOWBBBBBBBBWOO.",
+    ".WW.BBBBBBBB.WW.",
+    "....BBCBBBBB....",
+    "....BBBBBBBB....",
+    "....BBBBBBBB....",
+    ".....DDDDDD.....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "....LLL..LLL....",
+    "....LLL..LLL....",
+    "....DDD..DDD....",
+    "....BBB..BBB....",
+    "....BBB..BBB....",
+    "....BBBB.BBBB...",
+    "....BBBB.BBBB..."
+  ];
+
+  const ASTRO_CLIMB_L = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWWWWWWW...",
+    ".OO.WWWWWWWW....",
+    ".WW.WWWWWWWW....",
+    ".WW.LLLLLLLL....",
+    "..W.DDLLLLDD....",
+    "..WW.OOOOOO.....",
+    "...WBBBBBBBBW...",
+    "....BBBBBBBBWW..",
+    "....BBCBBBBBWW..",
+    "....BBBBBBBB.OO.",
+    "....BBBBBBBB.OO.",
+    ".....DDDDDD.....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWWW...",
+    "....LLL...LLL...",
+    "....LLL...DDD...",
+    "....DDD...BBB...",
+    "....BBB...BBBB..",
+    "....BBB...BBBB..",
+    "....BBBB........",
+    "....BBBB........",
+    "....BBBB........"
+  ];
+  const ASTRO_CLIMB_R = ASTRO_CLIMB_L.map(row => row.split("").reverse().join(""));
+
+  // 穴落ち落下ポーズ
+  const ASTRO_FALL = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW.OO.",
+    ".BBBBWWWCWWWWWW.",
+    "OOBBBWWWCWWWW...",
+    "WWBBBWWLLWWW....",
+    "..BBBLWWWWWW....",
+    "...BBLWWWWWW....",
+    "....DDWWWWWW....",
+    "....WWWWWWWW....",
+    "...WWWW..WWWW...",
+    "..WWWW....WWWW..",
+    "..LLL......LLL..",
+    "..DDD......DDD..",
+    "..BBB......BBB..",
+    ".BBBB......BBBB.",
+    ".BBBB......BBBB.",
+    "................",
+    "................"
+  ];
+
+  // ハンマー：背中から抜く（半身後ろ向き）
+  const ASTRO_HAMMER_PULL = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWWWVVVV...",
+    "...WWWWWWVVVRR..",
+    "...LLLWWWVVVVV..",
+    "...LLLLWWVVVV...",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..OOBBWWWWWW....",
+    ".OOBBBWWWCWW....",
+    ".WWBBBWWWWWW....",
+    "..BBBBWWWWWW....",
+    "..BBBBWWWWWW....",
+    "...BBBLLWWWW....",
+    "....DDDDWWWW....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "....LLL..LLL....",
+    "....LLL..LLL....",
+    "....DDD..DDD....",
+    "....BBB..BBB....",
+    "....BBB..BBB....",
+    "....BBBB.BBBB...",
+    "....BBBB.BBBB..."
+  ];
+
+  // ハンマー：頭上振りかぶり（両腕上げ奥向き）
+  const ASTRO_HAMMER_UP = [
+    "....OO....OO....",
+    "...WWWWWWWWWW...",
+    "...WW.WWWW.WW...",
+    "...WWWWWWWWWW...",
+    "...WWWWWWWWWW...",
+    "...LLLLLLLLLL...",
+    "...LLLLLLLLLL...",
+    "....DDLLLLDD....",
+    ".....OOOOOO.....",
+    "....BBBBBBBB....",
+    "....BBBBBBBB....",
+    "....BBCBBBBB....",
+    "....BBBBBBBB....",
+    "....BBBBBBBB....",
+    ".....DDDDDD.....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "....LLL..LLL....",
+    "....LLL..LLL....",
+    "....DDD..DDD....",
+    "....BBB..BBB....",
+    "....BBB..BBB....",
+    "....BBBB.BBBB...",
+    "....BBBB.BBBB..."
+  ];
+
+  // ハンマー：画面奥へ振り下ろし途中（完全後ろ姿）
+  const ASTRO_HAMMER_SWING = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWWWWWWW...",
+    "...WWWWWWWWWW...",
+    "...LLLLLLLLLL...",
+    "...LLLLLLLLLL...",
+    "....DDLLLLDD....",
+    "...OO.OOOO.OO...",
+    "..WWBBBBBBBBWW..",
+    "....BBBBBBBB....",
+    "....BBCBBBBB....",
+    "....BBBBBBBB....",
+    "....BBBBBBBB....",
+    ".....DDDDDD.....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "....LLL..LLL....",
+    "....LLL..LLL....",
+    "....DDD..DDD....",
+    "....BBB..BBB....",
+    "....BBB..BBB....",
+    "....BBBB.BBBB...",
+    "....BBBB.BBBB..."
+  ];
+
+  // ハンマー：画面奥へ叩きつけ！（腰を落とした後ろ姿）
+  const ASTRO_HAMMER_HIT = [
+    "................",
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWWWWWWW...",
+    "...WWWWWWWWWW...",
+    "...LLLLLLLLLL...",
+    "...LLLLLLLLLL...",
+    "....DDLLLLDD....",
+    "....OOOOOOOO....",
+    "....BBBBBBBB....",
+    "....BBBBBBBB....",
+    "....BBCBBBBB....",
+    "....BBBBBBBB....",
+    "....BBBBBBBB....",
+    ".....DDDDDD.....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "...WWWW..WWWW...",
+    "...LLL....LLL...",
+    "...LLL....LLL...",
+    "...DDD....DDD...",
+    "...BBB....BBB...",
+    "...BBB....BBB...",
+    "..BBBB....BBBB..",
+    "..BBBB....BBBB.."
+  ];
+
+  const WALK_STEP_FRAMES = 4; // 歩行コマ切替間隔（4Fごと）
+  const ARM_DELAY_FRAMES = 12; // 0.2s（12F）未満は足のみ、以上で腕も振る
+
+  Object.assign(R.Renderer.prototype, {
+    initPlayerSprites() {
+      if (typeof makeSpriteSet !== "function") return;
+      this.playerSprites = makeSpriteSet(
+        {
+          idle: UPPER_ARM_FIXED.concat(LOWER_IDLE),
+          foot0: UPPER_ARM_FIXED.concat(LOWER_FOOT_0),
+          foot1: UPPER_ARM_FIXED.concat(LOWER_FOOT_1),
+          foot2: UPPER_ARM_FIXED.concat(LOWER_FOOT_2),
+          foot3: UPPER_ARM_FIXED.concat(LOWER_FOOT_3),
+          walk0: UPPER_ARM_0.concat(LOWER_FOOT_0),
+          walk1: UPPER_ARM_1.concat(LOWER_FOOT_1),
+          walk2: UPPER_ARM_2.concat(LOWER_FOOT_2),
+          walk3: UPPER_ARM_3.concat(LOWER_FOOT_3),
+          climbHold: ASTRO_CLIMB_HOLD,
+          climbL: ASTRO_CLIMB_L,
+          climbR: ASTRO_CLIMB_R,
+          fall: ASTRO_FALL,
+          hammerPull: ASTRO_HAMMER_PULL,
+          hammerUp: ASTRO_HAMMER_UP,
+          hammerSwing: ASTRO_HAMMER_SWING,
+          hammerHit: ASTRO_HAMMER_HIT
+        },
+        PALETTE_ASTRO
+      );
+    },
+
+    getPlayerLadderVisual(slot) {
+      const s = slot.state;
+      const y = slot.y;
+      const topY = slot.topY;
+      const prom = slot.prom;
+      const n = slot.n;
+      const kind = slot.kind;
+      const d = slot.dir;
+
+      let vy = y;
+      let isHold = false;
+
+      if (s === 3) {
+        if (kind === "enter") {
+          if (n <= 4) {
+            vy = y;
+            isHold = true;
+          } else {
+            vy = topY + 31;
+          }
+        } else if (kind === "arrive") {
+          vy = y;
+          isHold = true;
+        } else if (kind === "enter_top") {
+          if (n <= 3) {
+            vy = topY;
+            isHold = true;
+          } else if (n <= 7) {
+            vy = topY + 3;
+          } else {
+            vy = topY + 7;
+          }
+        } else if (kind === "arrive_top") {
+          if (n <= 3) {
+            vy = topY + 7;
+          } else if (n <= 8) {
+            vy = topY + 3;
+          } else {
+            vy = topY;
+            isHold = true;
+          }
+        }
+      } else if (s === 6) {
+        if (kind === "enter_top_cont") {
+          if (n <= 5) {
+            vy = topY;
+            isHold = true;
+          } else if (n <= 10) {
+            vy = topY + 3;
+          } else {
+            vy = topY + 7;
+          }
+        } else if (kind === "cont") {
+          if (d & DOWN) {
+            if (n <= 1) vy = y - 1;
+            else if (n <= 6) vy = y + 3;
+            else vy = y + 7;
+          } else {
+            if (n <= 3) vy = y + 7;
+            else if (n <= 9) vy = y + 3;
+            else vy = y - 1;
+          }
+        }
+      } else if (s === 2) {
+        if (prom === 31 && y === topY) {
+          vy = topY + 7;
+        } else if (prom === 1 && y === topY + 32) {
+          vy = topY + 31;
+        } else if ((d & UP) && prom >= 30) {
+          vy = topY + 7;
+        } else {
+          vy = y;
+        }
+      }
+
+      if (isHold) {
+        return { vy, pose: "climbHold" };
+      }
+      const stepIndex = Math.round((vy - 3) / 4);
+      return { vy, pose: (stepIndex & 1) ? "climbR" : "climbL" };
+    },
+
+    drawPlayerBackHammer(baseX, drawY, facingDir, mode) {
+      const ctx = this.ctx;
+      const isLeft = (facingDir & LEFT) !== 0;
+
+      if (mode === "back") {
+        // 後ろ姿（はしご中）：背中のバックパックに斜めに刺さっている
+        const hx = isLeft ? baseX + 1 : baseX + 10;
+        const hy = drawY + 4;
+        ctx.fillStyle = "#8c5420";
+        for (let i = 0; i < 9; i++) {
+          const px = isLeft ? (baseX + 4 + i * 0.7) : (baseX + 11 - i * 0.7);
+          ctx.fillRect(Math.round(px), drawY + 7 + i, 1, 2);
+        }
+        ctx.fillStyle = "#d48e44";
+        for (let i = 0; i < 7; i++) {
+          const px = isLeft ? (baseX + 4 + i * 0.7) : (baseX + 11 - i * 0.7);
+          ctx.fillRect(Math.round(px), drawY + 7 + i, 1, 1);
+        }
+        ctx.fillStyle = "#48546a";
+        ctx.fillRect(hx, hy, 5, 4);
+        ctx.fillStyle = "#aebcd0";
+        ctx.fillRect(hx + 1, hy + 1, 3, 2);
+        return;
+      }
+
+      // 横向き（待機・歩行・落下など）：背中バックパックの上後ろに刺さっている
+      const headX = isLeft ? baseX + 12 : baseX - 1;
+      const headY = drawY + 3;
+      const gripStartX = isLeft ? baseX + 13 : baseX + 2;
+      const gripDir = isLeft ? -1 : 1;
+
+      ctx.fillStyle = "#8c5420";
+      ctx.fillRect(gripStartX, drawY + 7, 2, 3);
+      ctx.fillRect(gripStartX + gripDir, drawY + 10, 2, 4);
+      ctx.fillStyle = "#d48e44";
+      ctx.fillRect(gripStartX, drawY + 7, 1, 3);
+      ctx.fillRect(gripStartX + gripDir, drawY + 10, 1, 3);
+
+      ctx.fillStyle = "#48546a";
+      ctx.fillRect(headX, headY, 5, 4);
+      ctx.fillStyle = "#c2d0e4";
+      ctx.fillRect(headX + (isLeft ? 1 : 0), headY + 1, 4, 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(headX + (isLeft ? 2 : 1), headY + 1, 2, 1);
+    },
+
+    getPlayerHammerPhaseInfo(slot) {
+      const t = slot.hammerTimer;
+      if (slot.isGolden) {
+        if (t <= 1) return { phase: "pull", pose: "hammerPull", behind: false };
+        if (t <= 2) return { phase: "up", pose: "hammerUp", behind: false };
+        if (t <= 4) return { phase: "swing", pose: "hammerSwing", behind: true };
+        if (t <= 5) return { phase: "hit", pose: "hammerHit", behind: true };
+        return { phase: "return", pose: "hammerPull", behind: false };
+      }
+      if (t <= 3) return { phase: "pull", pose: "hammerPull", behind: false };
+      if (t <= 10) return { phase: "up", pose: "hammerUp", behind: false };
+      if (t <= 15) return { phase: "swing", pose: "hammerSwing", behind: true };
+      if (t <= 18) return { phase: "hit", pose: "hammerHit", behind: true };
+      return { phase: "return", pose: "hammerPull", behind: false };
+    },
+
+    drawPlayerActiveHammer(slot, baseX, drawY, phase) {
+      const ctx = this.ctx;
+      const faceVal = slot.facing || slot.dir;
+      const isLeft = (faceVal & LEFT) !== 0;
+      const headMain = slot.isGolden ? "#ffe042" : "#aebcd0";
+      const headDark = slot.isGolden ? "#a87010" : "#48546a";
+      const headHi = slot.isGolden ? "#ffffff" : "#e8f2ff";
+      const grip = "#d48e44";
+      const gripDark = "#8c5420";
+
+      if (phase === "pull" || phase === "return") {
+        const hx = isLeft ? baseX + 12 : baseX - 3;
+        const hy = drawY + 1;
+        ctx.fillStyle = gripDark;
+        ctx.fillRect(isLeft ? baseX + 12 : baseX + 2, drawY + 5, 2, 7);
+        ctx.fillStyle = grip;
+        ctx.fillRect(isLeft ? baseX + 12 : baseX + 2, drawY + 5, 1, 6);
+        ctx.fillStyle = headDark;
+        ctx.fillRect(hx, hy, 7, 5);
+        ctx.fillStyle = headMain;
+        ctx.fillRect(hx + 1, hy + 1, 5, 3);
+        return;
+      }
+
+      if (phase === "up") {
+        const hx = baseX + 3;
+        const hy = drawY - 8;
+        ctx.fillStyle = gripDark;
+        ctx.fillRect(baseX + 7, drawY - 3, 2, 7);
+        ctx.fillStyle = grip;
+        ctx.fillRect(baseX + 7, drawY - 3, 1, 6);
+        ctx.fillStyle = headDark;
+        ctx.fillRect(hx, hy, 10, 6);
+        ctx.fillStyle = headMain;
+        ctx.fillRect(hx + 1, hy + 1, 8, 4);
+        ctx.fillStyle = headHi;
+        ctx.fillRect(hx + 2, hy + 1, 6, 1);
+        return;
+      }
+
+      if (phase === "swing") {
+        const hx = baseX + 4;
+        const hy = drawY - 4;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+        ctx.fillRect(baseX + 6, drawY - 10, 4, 2);
+        ctx.fillRect(baseX + 5, drawY - 7, 6, 3);
+        ctx.fillStyle = gripDark;
+        ctx.fillRect(baseX + 7, drawY, 2, 8);
+        ctx.fillStyle = headDark;
+        ctx.fillRect(hx, hy, 8, 5);
+        ctx.fillStyle = headMain;
+        ctx.fillRect(hx + 1, hy + 1, 6, 3);
+        return;
+      }
+
+      const hx = baseX + 4;
+      const hy = drawY - 1;
+      ctx.fillStyle = gripDark;
+      ctx.fillRect(baseX + 7, drawY + 2, 2, 9);
+      ctx.fillStyle = headDark;
+      ctx.fillRect(hx, hy, 8, 5);
+      ctx.fillStyle = headMain;
+      ctx.fillRect(hx + 1, hy + 1, 6, 3);
+      ctx.fillStyle = headHi;
+      ctx.fillRect(hx + 2, hy + 2, 4, 1);
+
+      if (slot.hammerTimer >= (slot.isGolden ? 5 : 17)) {
+        ctx.fillStyle = "#fff480";
+        ctx.fillRect(baseX + 2, drawY - 3, 2, 2);
+        ctx.fillRect(baseX + 12, drawY - 3, 2, 2);
+        ctx.fillRect(baseX + 7, drawY - 4, 2, 2);
+      }
+    },
+
+    drawPlayerAt(slot, baseX, baseDrawY, world) {
+      if (!this.playerSprites) return;
+      const sprites = this.playerSprites;
+      const ctx = this.ctx;
+      const faceVal = slot.facing || slot.dir;
+      const facing = (faceVal & LEFT) ? "L" : "R";
+
+      if (slot.state === 15 || slot.state === 16) {
+        const img = sprites["idle_" + facing];
+        if (!img) return;
+        const f = world ? world.f : 0;
+        const phase = (f >> 2) & 1;
+        const bobY = slot.state === 15 ? 4 : (phase ? -3 : -2);
+        ctx.drawImage(img, 0, 0, 16, 9, baseX, baseDrawY + bobY, 16, 9);
+        ctx.fillStyle = "#ea7224";
+        ctx.fillRect(baseX + 1, baseDrawY + bobY + (phase ? 5 : 7), 2, 2);
+        ctx.fillRect(baseX + 13, baseDrawY + bobY + (phase ? 7 : 5), 2, 2);
+        if (slot.state === 16) {
+          ctx.fillStyle = phase ? "#ffec48" : "#ffffff";
+          ctx.fillRect(baseX + 7, baseDrawY - 6, 2, 2);
+        }
+        return;
+      }
+
+      if (slot.state === 10) {
+        const img = sprites["fall_" + facing] || sprites["idle_" + facing];
+        if (!img) return;
+        ctx.save();
+        ctx.translate(baseX, baseDrawY + 26);
+        ctx.scale(1, -1);
+        ctx.drawImage(img, 0, 0);
+        this.drawPlayerBackHammer(0, 0, faceVal, "side");
+        ctx.restore();
+        return;
+      }
+
+      if (slot.state === 11) {
+        const img = sprites["idle_" + facing];
+        if (!img) return;
+        const f = world ? world.f : 0;
+        const shakeX = ((f >> 1) & 1) ? 1 : -1;
+        const drawX = baseX + shakeX;
+        const stunY = baseDrawY + 2;
+        ctx.drawImage(img, drawX, stunY);
+        this.drawPlayerBackHammer(drawX, stunY, faceVal, "side");
+        const sx1 = baseX + 7 + Math.round(Math.cos(f * 0.35) * 5);
+        const sx2 = baseX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
+        ctx.fillStyle = "#ffec48";
+        ctx.fillRect(sx1, baseDrawY - 3, 2, 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(sx2, baseDrawY - 1, 2, 2);
+        return;
+      }
+
+      if (slot.state === 4) {
+        const hInfo = this.getPlayerHammerPhaseInfo(slot);
+        const img = sprites[hInfo.pose + "_" + facing];
+        if (!img) return;
+        if (hInfo.behind) {
+          this.drawPlayerActiveHammer(slot, baseX, baseDrawY, hInfo.phase);
+        }
+        ctx.drawImage(img, baseX, baseDrawY);
+        if (!hInfo.behind) {
+          this.drawPlayerActiveHammer(slot, baseX, baseDrawY, hInfo.phase);
+        }
+        return;
+      }
+
+      if (slot.state === 2 || slot.state === 3 || slot.state === 6) {
+        const lad = this.getPlayerLadderVisual(slot);
+        const drawY = lad.vy - 26;
+        const img = sprites[lad.pose + "_R"];
+        if (!img) return;
+        ctx.drawImage(img, baseX, drawY);
+        this.drawPlayerBackHammer(baseX, drawY, faceVal, "back");
+        return;
+      }
+
+      if (slot.state === 0 && world && slot.row < world.rows - 1) {
+        const curT = world.getTile(slot.row, slot.col);
+        if (curT !== TILE.SAND_LADDER &&
+            isSameLadderType(curT, world.getTile(slot.row + 1, slot.col))) {
+          const img = sprites.climbHold_R;
+          if (!img) return;
+          ctx.drawImage(img, baseX, baseDrawY);
+          this.drawPlayerBackHammer(baseX, baseDrawY, faceVal, "back");
+          return;
+        }
+      }
+
+      let poseKey = "idle";
+      if (slot.state === 5) {
+        poseKey = "fall";
+      } else if (slot.state === 8 || slot.state === 9) {
+        poseKey = "walk2";
+      } else if (slot.state === 1) {
+        const wf = slot.walkFrames || 0;
+        const step = Math.floor(wf / WALK_STEP_FRAMES) & 3;
+        poseKey = (wf >= ARM_DELAY_FRAMES ? "walk" : "foot") + step;
+      }
+
+      const img = sprites[poseKey + "_" + facing] || sprites["idle_" + facing];
+      if (!img) return;
+      ctx.drawImage(img, baseX, baseDrawY);
+      this.drawPlayerBackHammer(baseX, baseDrawY, faceVal, "side");
+    },
+
+    drawPlayer(slot, worldWidth, world) {
+      const baseDrawY = slot.y - 26;
+      this.drawPlayerAt(slot, slot.x, baseDrawY, world);
+      if (slot.x > worldWidth - 16) {
+        this.drawPlayerAt(slot, slot.x - worldWidth, baseDrawY, world);
+      }
+      if (slot.x < 16) {
+        this.drawPlayerAt(slot, slot.x + worldWidth, baseDrawY, world);
+      }
+    }
+  });
+})(typeof globalThis !== "undefined" ? globalThis : window);
