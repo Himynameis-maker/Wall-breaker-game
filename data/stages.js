@@ -15,11 +15,34 @@
   const W2 = TILE.WALL_2;
   const W3 = TILE.WALL_3;
   const B = TILE.BOMB;
+  const TB = TILE.TIMED_BOMB;
   const BL = TILE.BREAK_LADDER;
   const DR = TILE.DOOR;
   const P = TILE.PILLAR;
 
   const STAGES = {
+    timedBombDemo: {
+      cols: 16,
+      rows: 8,
+      tiles: [
+        [4, 4, L], [4, 6, TB], [4, 10, TB], [4, 12, L],
+        [5, 4, L], [5, 10, P], [5, 12, L], [5, 14, DR],
+        [6, 4, L], [6, 6, W1], [6, 7, TB], [6, 8, B], [6, 9, W2], [6, 12, L],
+        [7, 0, D], [7, 2, L], [7, 4, L], [7, 10, B], [7, 11, W1], [7, 12, TB], [7, 13, W1], [7, 14, DR], [7, 15, D]
+      ],
+      timedBombs: [
+        { row: 6, col: 7, sec: 15 },
+        { row: 4, col: 10, sec: 30 },
+        { row: 4, col: 6, sec: 45 },
+        { row: 7, col: 12, sec: 60 }
+      ],
+      mario: { x: 32, y: 224 },
+      spike: { x: 208, y: 64 },
+      enemies: [
+        { enemyType: "spanagon", x: 176, y: 192, dir: RIGHT },
+        { enemyType: "spanagon", x: 96, y: 256, dir: RIGHT }
+      ]
+    },
     enemyDemo: {
       cols: 16,
       rows: 8,
