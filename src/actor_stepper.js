@@ -438,7 +438,7 @@
       const belowTile = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, slot.col) : TILE.EMPTY;
       const isContAtFinish = slot.row < world.rows - 1 &&
         this.isLadderTileForSlot(slot, curTile) &&
-        (belowTile === curTile || belowTile === TILE.HOLE_PILLAR_LAD);
+        belowTile === curTile;
       if (isContAtFinish) {
         if (slot.row === 0) {
           slot.state = 0;
