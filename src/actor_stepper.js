@@ -491,6 +491,7 @@
             this.updateCR(slot, world);
           } else {
             slot.state = 16;
+            slot.trapOrder = (world.nextTrapOrder = (world.nextTrapOrder || 0) + 1);
           }
         }
         return;
