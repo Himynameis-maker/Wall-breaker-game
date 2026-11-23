@@ -121,6 +121,9 @@
 
     // $C8BB 相当: 落下中ドラム缶 ($0D) による閉じ込め捕獲＆隣セルはみ出し押し戻し
     checkDrumTrap(slot, world) {
+      if (slot.isMario && world.stageCleared) {
+        return false;
+      }
       if (slot.state !== 0 && slot.state !== 1 && slot.state !== 2 && slot.state !== 4) {
         return false;
       }
@@ -155,6 +158,9 @@
     }
 
     checkHazardHit(slot, world) {
+      if (slot.isMario && world.stageCleared) {
+        return false;
+      }
       if (slot.state === 10 || slot.state === 11 || slot.state === 15 || slot.state === 16) {
         return false;
       }
@@ -476,7 +482,16 @@
       // State 15 ($0F): 落下中ドラム缶に捕獲され待機 → 着地($08)で State 16 へ
       if (slot.state === 15) {
         if (world.getTile(slot.row, slot.col) === TILE.DRUM) {
-          slot.state = 16;
+          if (slot.isMario && world.stageCleared) {
+            slot.flag |= 2;
+            slot.y = slot.row * 32 + 0x0b;
+            slot.topY = slot.y;
+            slot.state = 0;
+            slot.prom = 0;
+            this.updateCR(slot, world);
+          } else {
+            slot.state = 16;
+          }
         }
         return;
       }
