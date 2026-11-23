@@ -726,20 +726,10 @@
       ctx.fillRect(0, 6, 1, Math.max(0, world.rows * 32 - 6));
       ctx.fillRect(w - 1, 6, 1, Math.max(0, world.rows * 32 - 6));
 
-      // 抜けた穴の背景影（裏側キャラより奥に描き、穴落ち中の体が隠れないようにする）
-      ctx.fillStyle = "#0d1222";
-      for (let row = 0; row < world.rows - 1; row++) {
-        const floorY = (row + 1) * 32;
-        for (let col = 0; col < world.cols; col++) {
-          const tile = world.getTile(row, col);
-          if (isHoleTile(tile) || tile === TILE.HOLE_FALLING) {
-            ctx.fillRect(col * 16, floorY, 16, 6);
-          }
-        }
-      }
-
       // 裏側キャラ層（親方 ＋ 裏ザコ敵：金網・床・扉・ハシゴ・鉄柱・ドラム缶の奥側に描画）
-      this.drawActor(world.spike, this.spikeSprites, w, world);
+      if (world.spike) {
+        this.drawActor(world.spike, this.spikeSprites, w, world);
+      }
       if (world.enemies) {
         for (const enemy of world.enemies) {
           if (enemy.isBack) this.drawEnemy(enemy, w, world);
