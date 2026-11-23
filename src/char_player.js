@@ -458,6 +458,66 @@
     "..BBBB....BBBB.."
   ];
 
+  // 死亡演出フェーズ1：当たった瞬間のコチラ向き正面静止（黒バイザー＋反射光のみ）
+  const ASTRO_DEAD_LOOK = [
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWVVVVVVWW...",
+    "...WVVVVVRRVW...",
+    "...WVVVVVVVVW...",
+    "...LLWWVVWWLL...",
+    "....LLWWWWLL....",
+    ".....OOOOOO.....",
+    "...BWWWWWWWWB...",
+    "..BWWWWCCWWWWB..",
+    "..WW.WWDDWW.WW..",
+    ".OO..WWCCWW..OO.",
+    ".PP..WWDDWW..PP.",
+    ".....WWWWWW.....",
+    ".....DDDDDD.....",
+    "....WWWWWWWW....",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "....LLL..LLL....",
+    "....LLL..LLL....",
+    "....DDD..DDD....",
+    "....BBB..BBB....",
+    "....BBB..BBB....",
+    "...BBBB..BBBB...",
+    "...BBBB..BBBB..."
+  ];
+
+  // 死亡演出フェーズ2：コチラ向きのまま両腕バンザイ＆両足を大きく抱え上げて高速落下
+  const ASTRO_DEAD_FALL = [
+    "OO............OO",
+    "OO...WWWWWW...OO",
+    "PP..WWWWWWWW..PP",
+    "WW.WWVVVVVVWW.WW",
+    "WW.WVVVVVRRVW.WW",
+    ".W.WVVVVVVVVW.W.",
+    ".W.LLWWVVWWLL.W.",
+    ".WW.LLWWWWLL.WW.",
+    "..WW.OOOOOO.WW..",
+    "...WWWWCCWWWW...",
+    "....WWWDDWWW....",
+    "....WWWCCWWW....",
+    ".....DDDDDD.....",
+    "...WWWWWWWWWW...",
+    "..WWWWW..WWWWW..",
+    ".WWWWW....WWWWW.",
+    ".LLLL......LLLL.",
+    ".DDDD......DDDD.",
+    ".BBBB......BBBB.",
+    "BBBB........BBBB",
+    ".BBBB......BBBB.",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ];
+
   const WALK_STEP_FRAMES = 5; // 歩行コマ切替間隔（5Fごと）
 
   Object.assign(R.Renderer.prototype, {
@@ -480,7 +540,9 @@
           hammerPull: ASTRO_HAMMER_PULL,
           hammerUp: ASTRO_HAMMER_UP,
           hammerSwing: ASTRO_HAMMER_SWING,
-          hammerHit: ASTRO_HAMMER_HIT
+          hammerHit: ASTRO_HAMMER_HIT,
+          deadLook: ASTRO_DEAD_LOOK,
+          deadFall: ASTRO_DEAD_FALL
         },
         PALETTE_ASTRO
       );
@@ -711,6 +773,14 @@
       const faceVal = slot.facing || slot.dir;
       const facing = (faceVal & LEFT) ? "L" : "R";
 
+      if (world && world.marioDead) {
+        const poseKey = world.deathPhase === 1 ? "deadLook_R" : "deadFall_R";
+        const img = sprites[poseKey] || sprites["idle_" + facing];
+        if (!img) return;
+        ctx.drawImage(img, baseX, baseDrawY);
+        return;
+      }
+
       if (slot.state === 15 || slot.state === 16) {
         const img = sprites["idle_" + facing];
         if (!img) return;
@@ -844,7 +914,7 @@
     },
 
     drawPlayer(slot, worldWidth, world) {
-      const baseDrawY = slot.y - 26;
+      const baseDrawY = Math.round(slot.y) - 26;
       this.drawPlayerAt(slot, slot.x, baseDrawY, world);
       if (slot.x > worldWidth - 16) {
         this.drawPlayerAt(slot, slot.x - worldWidth, baseDrawY, world);
