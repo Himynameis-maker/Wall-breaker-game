@@ -105,8 +105,11 @@
       this.stepper = stepper;
       this.mario = new Actor(true);
       this.mario.walkFrames = 0;
-      this.spike = new Actor(false);
-      this.spike.walkFrames = 0;
+      const hasSpike = config.spike !== null && config.spike !== false;
+      this.spike = hasSpike ? new Actor(false) : null;
+      if (this.spike) {
+        this.spike.walkFrames = 0;
+      }
       this.spikeAI = new SpikeAI();
       this.enemies = [];
       this.enemyAI = typeof EnemyAI === "function" ? new EnemyAI() : null;
@@ -138,7 +141,7 @@
           this.mario.facing = this.mario.dir & (LEFT | RIGHT);
         }
       }
-      if (config.spike) {
+      if (this.spike && config.spike) {
         Object.assign(this.spike, config.spike);
         if ((this.spike.dir & (LEFT | RIGHT)) !== 0) {
           this.spike.facing = this.spike.dir & (LEFT | RIGHT);
@@ -149,7 +152,9 @@
       }
 
       this.stepper.updateCR(this.mario, this);
-      this.stepper.updateCR(this.spike, this);
+      if (this.spike) {
+        this.stepper.updateCR(this.spike, this);
+      }
       if (Array.isArray(config.enemies) && typeof EnemyActor === "function") {
         for (let i = 0; i < config.enemies.length; i++) {
           const e = new EnemyActor(config.enemies[i]);
@@ -778,6 +783,7 @@
 
     updateSpikeHammer() {
       const sp = this.spike;
+      if (!sp) return;
       const ma = this.mario;
       sp.bits &= ~HAMMER;
       if (sp.state === 4 || sp.state === 10 || sp.state === 11 || sp.state === 15 || sp.state === 16) {
@@ -1218,15 +1224,17 @@
 
       if (!this.allBackStop) {
         this.updateEnemyCollisions();
-        if (this.f % 2 === 1) {
-          this.spikeAI.update(this);
-        }
-        this.updateSpikeHammer();
-        this.stepper.step(this.spike, this);
-        if (this.spike.state === 1) {
-          this.spike.walkFrames = (this.spike.walkFrames || 0) + 1;
-        } else {
-          this.spike.walkFrames = 0;
+        if (this.spike) {
+          if (this.f % 2 === 1) {
+            this.spikeAI.update(this);
+          }
+          this.updateSpikeHammer();
+          this.stepper.step(this.spike, this);
+          if (this.spike.state === 1) {
+            this.spike.walkFrames = (this.spike.walkFrames || 0) + 1;
+          } else {
+            this.spike.walkFrames = 0;
+          }
         }
         if (this.enemyAI && this.enemies.length > 0) {
           this.enemyAI.updateAll(this);
