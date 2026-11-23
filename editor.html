@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ステージエディタ（お試し3ステージ作成）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 10px;
+      background: #12151c;
+      color: #eef1f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      overscroll-behavior: none;
+    }
+    .hidden { display: none !important; }
+    .container {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .topbar, .row-bar {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .row-left {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .title-pill {
+      background: #1b2232;
+      border: 1px solid #32405c;
+      border-radius: 8px;
+      padding: 6px 11px;
+      font-size: 0.88rem;
+      font-weight: bold;
+    }
+    button, select, a.link-btn {
+      background: #283042;
+      color: #eef1f6;
+      border: 1px solid #3c4863;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      text-decoration: none;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    button.active { background: #2f6fed; border-color: #6ea0ff; font-weight: bold; }
+    button.play-btn { background: #1e8848; border-color: #3dc472; font-weight: bold; }
+    button.back-btn { background: #b45309; border-color: #f59e0b; font-weight: bold; }
+    button.danger-btn { background: #6b242c; border-color: #b84452; }
+    .card {
+      background: #171c26;
+      border: 1px solid #2c364d;
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .screen-wrap {
+      width: 100%;
+      background: #000;
+      border: 2px solid #2e3850;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    canvas#editCanvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      cursor: crosshair;
+    }
+    canvas#playCanvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .status-line {
+      font-size: 0.78rem;
+      color: #a9b8d4;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .status-msg { color: #ffd970; font-weight: bold; }
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      gap: 5px;
+    }
+    .tool-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      text-align: left;
+      background: #222939;
+    }
+    .tool-btn.active {
+      background: #2758bd;
+      border-color: #7eb0ff;
+    }
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+    .sub-opts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      font-size: 0.78rem;
+      padding-top: 2px;
+      border-top: 1px solid #263046;
+    }
+    .enemy-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
+    .enemy-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #222a3a;
+      border: 1px solid #3c4863;
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 0.74rem;
+    }
+    .enemy-chip button {
+      padding: 2px 5px;
+      font-size: 0.72rem;
+    }
+    textarea#exportArea {
+      width: 100%;
+      min-height: 90px;
+      background: #0d111a;
+      color: #dce6f7;
+      border: 1px solid #32405c;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.74rem;
+      resize: vertical;
+    }
+    .controls-area {
+      width: 100%;
+      max-width: 580px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 4px 12px;
+    }
+    .stick-base {
+      position: relative;
+      width: 132px;
+      height: 132px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #252c3b 0%, #191e29 72%);
+      border: 2px solid #44516e;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      flex-shrink: 0;
+    }
+    .stick-cross-h, .stick-cross-v {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+    }
+    .stick-cross-h { left: 16px; right: 16px; top: 50%; height: 2px; margin-top: -1px; }
+    .stick-cross-v { top: 16px; bottom: 16px; left: 50%; width: 2px; margin-left: -1px; }
+    .stick-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      margin-left: -27px;
+      margin-top: -27px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #6a8cff, #2f57c8);
+      border: 2px solid #9ab4ff;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+    .action-btn {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ff6b5b, #b8281c);
+      border: 3px solid #ffa498;
+      color: #fff;
+      font-weight: bold;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .action-btn.pressed {
+      transform: scale(0.93);
+      background: radial-gradient(circle at 35% 35%, #ff9587, #d63527);
+    }
+    label.chk-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="editView" class="container">
+    <div class="topbar">
+      <div class="row-left">
+        <div class="title-pill">ステージエディタ</div>
+        <a class="link-btn" href="./index.html">← ゲーム画面へ</a>
+      </div>
+      <div class="row-left">
+        <button id="undoBtn" type="button">↩ 1つ戻す</button>
+        <button id="startPlayBtn" class="play-btn" type="button">▶ テストプレイ</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row-bar">
+        <div id="slotTabs" class="row-left">
+          <button type="button" class="slot-btn active" data-slot="0">ステージ 1</button>
+          <button type="button" class="slot-btn" data-slot="1">ステージ 2</button>
+          <button type="button" class="slot-btn" data-slot="2">ステージ 3</button>
+        </div>
+        <div class="row-left">
+          <select id="sampleSelect" aria-label="サンプル読込">
+            <option value="">サンプルを読込...</option>
+            <option value="__blank__">まっさら初期化</option>
+          </select>
+          <button id="clearTilesBtn" class="danger-btn" type="button">モノ全消去</button>
+        </div>
+      </div>
+
+      <div class="row-bar">
+        <div class="row-left">
+          <label>横:
+            <select id="colsSelect" aria-label="横列数">
+              <option value="14">14列</option>
+              <option value="16">16列</option>
+              <option value="18">18列</option>
+              <option value="20" selected>20列</option>
+              <option value="22">22列</option>
+              <option value="24">24列</option>
+            </select>
+          </label>
+          <label>縦:
+            <select id="rowsSelect" aria-label="縦段数">
+              <option value="6">6段</option>
+              <option value="7">7段</option>
+              <option value="8" selected>8段</option>
+              <option value="9">9段</option>
+              <option value="10">10段</option>
+            </select>
+          </label>
+          <label>火の玉:
+            <select id="fireballSelect" aria-label="火の玉設定">
+              <option value="normal">普通</option>
+              <option value="off">なし(OFF)</option>
+              <option value="fast">速い</option>
+            </select>
+          </label>
+        </div>
+        <div id="stageSummary" style="font-size:0.78rem;color:#b8c7e0;"></div>
+      </div>
+    </div>
+
+    <div class="screen-wrap">
+      <canvas id="editCanvas" width="320" height="304"></canvas>
+    </div>
+
+    <div class="status-line">
+      <span id="toolDesc">マスをタップ（なぞり描き可）で配置します</span>
+      <span id="statusMsg" class="status-msg"></span>
+    </div>
+
+    <div class="card">
+      <div id="paletteGrid" class="palette-grid"></div>
+
+      <div id="timedBombOpts" class="sub-opts hidden">
+        <span>時限爆弾の秒数:</span>
+        <button type="button" class="tb-sec-btn" data-sec="15">15秒(3時)</button>
+        <button type="button" class="tb-sec-btn active" data-sec="30">30秒(6時)</button>
+        <button type="button" class="tb-sec-btn" data-sec="45">45秒(9時)</button>
+        <button type="button" class="tb-sec-btn" data-sec="60">60秒(12時)</button>
+      </div>
+
+      <div id="actorDirOpts" class="sub-opts hidden">
+        <span>置くときの向き:</span>
+        <button type="button" class="dir-btn active" data-dir="2">← 左向き</button>
+        <button type="button" class="dir-btn" data-dir="1">右向き →</button>
+        <span style="color:#93a4c0;">※同じマスを再タップでも反転</span>
+      </div>
+
+      <div id="enemyListRow" class="sub-opts hidden">
+        <span>配置中の敵:</span>
+        <div id="enemyChips" class="enemy-chips"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row-bar">
+        <div class="row-left">
+          <button id="exportBundleBtn" type="button">3ステージまとめて出力（お披露目HTML用）</button>
+          <button id="exportSingleBtn" type="button">今の1ステージをJS出力</button>
+        </div>
+        <div class="row-left">
+          <button id="copyExportBtn" type="button">コピー</button>
+          <button id="importBtn" type="button">下の文字から読込</button>
+        </div>
+      </div>
+      <textarea id="exportArea" placeholder="ここに書き出しデータが出ます（3ステージまとめJSONなどを貼って「下の文字から読込」もできます）"></textarea>
+    </div>
+  </div>
+
+  <div id="playView" class="container hidden">
+    <div class="topbar">
+      <div class="row-left">
+        <div id="playTitle" class="title-pill">テストプレイ</div>
+        <label class="chk-label">
+          <input id="playIntroChk" type="checkbox">
+          開幕演出あり
+        </label>
+      </div>
+      <div class="row-left">
+        <button id="playResetBtn" type="button">↺ やり直す</button>
+        <button id="backToEditBtn" class="back-btn" type="button">✎ 編集に戻る</button>
+      </div>
+    </div>
+
+    <div class="screen-wrap" style="max-width:560px;margin:0 auto;">
+      <canvas id="playCanvas" width="320" height="240"></canvas>
+    </div>
+
+    <div id="playStatus" class="status-line" style="justify-content:center;"></div>
+
+    <div class="controls-area">
+      <div id="stickBase" class="stick-base" aria-label="擬似スティック">
+        <div class="stick-cross-h"></div>
+        <div class="stick-cross-v"></div>
+        <div id="stickKnob" class="stick-knob"></div>
+      </div>
+      <button id="hammerBtn" class="action-btn" type="button" aria-label="ハンマー">HAMMER</button>
+    </div>
+  </div>
+
+  <script src="./src/constants.js"></script>
+  <script src="./src/actor_stepper.js"></script>
+  <script src="./src/spike_ai.js"></script>
+  <script src="./src/enemy_ai.js"></script>
+  <script src="./src/game_world.js"></script>
+  <script src="./data/sprites.js"></script>
+  <script src="./src/renderer.js"></script>
+  <script src="./src/render_tiles.js"></script>
+  <script src="./src/render_actors.js"></script>
+  <script src="./src/render_enemies.js"></script>
+  <script src="./src/char_player.js"></script>
+  <script src="./src/char_spike.js"></script>
+  <script src="./src/char_spanagon.js"></script>
+  <script src="./src/char_eggplant.js"></script>
+  <script src="./src/char_fireball.js"></script>
+  <script src="./data/stages.js"></script>
+  <script src="./src/stage_editor.js"></script>
+  <script>
+    (function () {
+      const { RIGHT, LEFT, DOWN, UP, HAMMER, GameWorld } = window.WreckGame;
+      const { Renderer } = window.WreckRender;
+      const { STAGES } = window.WreckStages;
+      const E = window.WreckEditor;
+
+      const SWATCH_COLORS = {
+        erase: "#1b2232",
+        wall1: "#b8743c",
+        wall2: "#b8c6dc",
+        wall3: "#485266",
+        ladder: "#d49a52",
+        breakLadder: "#e26894",
+        sandLadder: "#b6985e",
+        drum: "#c83838",
+        hole: "#0a0e1a",
+        bomb: "#6280b2",
+        timedBomb: "#f0a030",
+        door: "#369494",
+        pillar: "#7d92b0",
+        mario: "#f2f6ff",
+        spike: "#b4bfd0",
+        spanagon: "#f0d040",
+        spanagonFast: "#e65232",
+        eggplant: "#9ae830"
+      };
+
+      const editView = document.getElementById("editView");
+      const playView = document.getElementById("playView");
+      const editCanvas = document.getElementById("editCanvas");
+      const playCanvas = document.getElementById("playCanvas");
+      const editCtx = editCanvas.getContext("2d");
+
+      const editRenderer = new Renderer(editCanvas, { viewHeight: 304 });
+      const playRenderer = new Renderer(playCanvas, { viewHeight: 240 });
+
+      const slotTabs = document.getElementById("slotTabs");
+      const sampleSelect = document.getElementById("sampleSelect");
+      const colsSelect = document.getElementById("colsSelect");
+      const rowsSelect = document.getElementById("rowsSelect");
+      const fireballSelect = document.getElementById("fireballSelect");
+      const stageSummary = document.getElementById("stageSummary");
+      const toolDesc = document.getElementById("toolDesc");
+      const statusMsg = document.getElementById("statusMsg");
+      const paletteGrid = document.getElementById("paletteGrid");
+      const timedBombOpts = document.getElementById("timedBombOpts");
+      const actorDirOpts = document.getElementById("actorDirOpts");
+      const enemyListRow = document.getElementById("enemyListRow");
+      const enemyChips = document.getElementById("enemyChips");
+      const exportArea = document.getElementById("exportArea");
+
+      const undoBtn = document.getElementById("undoBtn");
+      const clearTilesBtn = document.getElementById("clearTilesBtn");
+      const startPlayBtn = document.getElementById("startPlayBtn");
+      const exportBundleBtn = document.getElementById("exportBundleBtn");
+      const exportSingleBtn = document.getElementById("exportSingleBtn");
+      const copyExportBtn = document.getElementById("copyExportBtn");
+      const importBtn = document.getElementById("importBtn");
+
+      const playTitle = document.getElementById("playTitle");
+      const playIntroChk = document.getElementById("playIntroChk");
+      const playResetBtn = document.getElementById("playResetBtn");
+      const backToEditBtn = document.getElementById("backToEditBtn");
+      const playStatus = document.getElementById("playStatus");
+      const stickBase = document.getElementById("stickBase");
+      const stickKnob = document.getElementById("stickKnob");
+      const hammerBtn = document.getElementById("hammerBtn");
+
+      let slots = E.loadSlotsFromStorage();
+      let currentSlot = 0;
+      let currentToolId = "wall1";
+      let timedBombSec = 30;
+      let actorDir = LEFT;
+      let hoverCell = null;
+      let mode = "edit"; // "edit" | "play"
+
+      const undoStacks = [[], [], []];
+      let msgTimer = null;
+
+      function currentData() {
+        return slots[currentSlot];
+      }
+
+      function showStatus(msg) {
+        statusMsg.textContent = msg || "";
+        if (msgTimer) clearTimeout(msgTimer);
+        if (msg) {
+          msgTimer = setTimeout(() => { statusMsg.textContent = ""; }, 2600);
+        }
+      }
+
+      function pushUndo(snapshot) {
+        const st = undoStacks[currentSlot];
+        st.push(snapshot || E.cloneStageData(currentData()));
+        if (st.length > 35) st.shift();
+        undoBtn.disabled = st.length === 0;
+      }
+
+      function saveSlots() {
+        E.saveSlotsToStorage(slots);
+      }
+
+      // サンプル選択肢の構築
+      Object.keys(STAGES).forEach((key, idx) => {
+        const cfg = STAGES[key];
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = "STAGE " + (cfg.stageNumber || (idx + 1)) + " (" + key + ")";
+        sampleSelect.appendChild(opt);
+      });
+
+      // パレットボタン生成
+      E.EDITOR_TOOLS.forEach(tool => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tool-btn" + (tool.id === currentToolId ? " active" : "");
+        btn.dataset.tool = tool.id;
+        const sw = document.createElement("span");
+        sw.className = "swatch";
+        sw.style.background = SWATCH_COLORS[tool.id] || "#666";
+        const lb = document.createElement("span");
+        lb.textContent = tool.label;
+        btn.appendChild(sw);
+        btn.appendChild(lb);
+        btn.addEventListener("click", () => selectTool(tool.id));
+        paletteGrid.appendChild(btn);
+      });
+
+      function selectTool(toolId) {
+        currentToolId = toolId;
+        const tool = E.EDITOR_TOOLS.find(t => t.id === toolId);
+        toolDesc.textContent = tool ? tool.desc : "";
+
+        Array.from(paletteGrid.querySelectorAll(".tool-btn")).forEach(b => {
+          b.classList.toggle("active", b.dataset.tool === toolId);
+        });
+        timedBombOpts.classList.toggle("hidden", toolId !== "timedBomb");
+        const isActorTool = tool && (tool.kind === "actor" || tool.kind === "enemy");
+        actorDirOpts.classList.toggle("hidden", !isActorTool);
+      }
+
+      function refreshUIControls() {
+        const data = currentData();
+        colsSelect.value = String(data.cols);
+        rowsSelect.value = String(data.rows);
+        fireballSelect.value = data.fireballMode || "normal";
+
+        Array.from(slotTabs.querySelectorAll(".slot-btn")).forEach((b, idx) => {
+          b.classList.toggle("active", idx === currentSlot);
+        });
+        undoBtn.disabled = undoStacks[currentSlot].length === 0;
+
+        const targets = E.countClearTargets(data);
+        const targetWarn = targets === 0 ? "（0個だと即クリア）" : "";
+        stageSummary.textContent = "壊す対象: " + targets + "個" + targetWarn + " / 敵: " + data.enemies.length + "体";
+
+        // 配置中敵チップ更新
+        enemyChips.innerHTML = "";
+        enemyListRow.classList.toggle("hidden", data.enemies.length === 0);
+        data.enemies.forEach((e, idx) => {
+          const wrap = document.createElement("span");
+          wrap.className = "enemy-chip";
+          const label = e.enemyType === "eggplant" ? "緑" : (e.enemyType === "spanagonFast" ? "赤" : "黄");
+          const txt = document.createElement("span");
+          txt.textContent = label + "(" + e.row + "," + e.col + ")";
+          const dirBtn = document.createElement("button");
+          dirBtn.type = "button";
+          dirBtn.textContent = e.dir === LEFT ? "←" : "→";
+          dirBtn.title = "向き反転";
+          dirBtn.addEventListener("click", () => {
+            pushUndo();
+            e.dir = e.dir === LEFT ? RIGHT : LEFT;
+            saveSlots();
+            refreshAllEdit();
+          });
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "danger-btn";
+          delBtn.textContent = "×";
+          delBtn.title = "削除";
+          delBtn.addEventListener("click", () => {
+            pushUndo();
+            data.enemies.splice(idx, 1);
+            saveSlots();
+            refreshAllEdit();
+          });
+          wrap.appendChild(txt);
+          wrap.appendChild(dirBtn);
+          wrap.appendChild(delBtn);
+          enemyChips.appendChild(wrap);
+        });
+      }
+
+      function renderEditCanvas() {
+        const data = currentData();
+        const cfg = E.toWorldConfig(data, { stageNumber: currentSlot + 1, skipIntro: true });
+        cfg.fireball = false;
+        const previewWorld = new GameWorld(cfg);
+        editRenderer.viewHeight = data.rows * 32 + 48;
+        editRenderer.resetCamera(previewWorld);
+        editRenderer.draw(previewWorld);
+        E.drawEditorOverlay(editCtx, data, { hoverCell });
+      }
+
+      function refreshAllEdit() {
+        refreshUIControls();
+        renderEditCanvas();
+      }
+
+      // キャンバス座標 → マス座標変換
+      function getCellFromClientPoint(clientX, clientY) {
+        const data = currentData();
+        const rect = editCanvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return null;
+        const cx = (clientX - rect.left) * (editCanvas.width / rect.width);
+        const cy = (clientY - rect.top) * (editCanvas.height / rect.height);
+        const col = Math.floor(cx / 16);
+        const row = Math.floor((cy - 24) / 32);
+        if (row < 0 || row >= data.rows || col < 0 || col >= data.cols) return null;
+        return { row, col };
+      }
+
+      let isPainting = false;
+      let paintPointerId = null;
+      let lastPaintedKey = "";
+      let strokeSnapshot = null;
+      let strokeRecorded = false;
+
+      function applyAtCell(cell, isDrag) {
+        if (!cell) return;
+        const res = E.applyToolAt(currentData(), currentToolId, cell.row, cell.col, {
+          timedSec: timedBombSec,
+          actorDir,
+          isDrag
+        });
+        if (res.message) showStatus(res.message);
+        if (res.changed) {
+          if (!strokeRecorded && strokeSnapshot) {
+            pushUndo(strokeSnapshot);
+            strokeRecorded = true;
+          }
+          saveSlots();
+          refreshAllEdit();
+        }
+      }
+
+      editCanvas.addEventListener("pointerdown", e => {
+        if (mode !== "edit") return;
+        e.preventDefault();
+        const cell = getCellFromClientPoint(e.clientX, e.clientY);
+        hoverCell = cell;
+        isPainting = true;
+        paintPointerId = e.pointerId;
+        lastPaintedKey = cell ? (cell.row + "," + cell.col) : "";
+        strokeSnapshot = E.cloneStageData(currentData());
+        strokeRecorded = false;
+        if (editCanvas.setPointerCapture) {
+          try { editCanvas.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+        applyAtCell(cell, false);
+        renderEditCanvas();
+      });
+
+      editCanvas.addEventListener("pointermove", e => {
+        if (mode !== "edit") return;
+        const cell = getCellFromClientPoint(e.clientX, e.clientY);
+        const prevHover = hoverCell ? (hoverCell.row + "," + hoverCell.col) : "";
+        const nextHover = cell ? (cell.row + "," + cell.col) : "";
+        hoverCell = cell;
+
+        if (isPainting && e.pointerId === paintPointerId) {
+          e.preventDefault();
+          if (cell && nextHover !== lastPaintedKey) {
+            lastPaintedKey = nextHover;
+            applyAtCell(cell, true);
+          } else if (prevHover !== nextHover) {
+            renderEditCanvas();
+          }
+        } else if (prevHover !== nextHover) {
+          renderEditCanvas();
+        }
+      });
+
+      function endPaint(e) {
+        if (e.pointerId === paintPointerId) {
+          isPainting = false;
+          paintPointerId = null;
+          lastPaintedKey = "";
+          strokeSnapshot = null;
+          strokeRecorded = false;
+        }
+      }
+      editCanvas.addEventListener("pointerup", endPaint);
+      editCanvas.addEventListener("pointercancel", endPaint);
+      editCanvas.addEventListener("pointerleave", () => {
+        hoverCell = null;
+        if (!isPainting) renderEditCanvas();
+      });
+
+      // スロット切替
+      Array.from(slotTabs.querySelectorAll(".slot-btn")).forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentSlot = Number(btn.dataset.slot) || 0;
+          hoverCell = null;
+          showStatus("ステージ " + (currentSlot + 1) + " を開きました");
+          refreshAllEdit();
+        });
+      });
+
+      // Undo
+      undoBtn.addEventListener("click", () => {
+        const st = undoStacks[currentSlot];
+        if (st.length === 0) return;
+        slots[currentSlot] = st.pop();
+        saveSlots();
+        showStatus("1つ前の状態に戻しました");
+        refreshAllEdit();
+      });
+
+      // サイズ・火の玉変更
+      colsSelect.addEventListener("change", () => {
+        pushUndo();
+        slots[currentSlot] = E.resizeStageData(currentData(), Number(colsSelect.value), currentData().rows);
+        saveSlots();
+        refreshAllEdit();
+      });
+      rowsSelect.addEventListener("change", () => {
+        pushUndo();
+        slots[currentSlot] = E.resizeStageData(currentData(), currentData().cols, Number(rowsSelect.value));
+        saveSlots();
+        refreshAllEdit();
+      });
+      fireballSelect.addEventListener("change", () => {
+        pushUndo();
+        currentData().fireballMode = fireballSelect.value;
+        saveSlots();
+        refreshAllEdit();
+      });
+
+      // サンプル読込 / 初期化
+      sampleSelect.addEventListener("change", () => {
+        const val = sampleSelect.value;
+        if (!val) return;
+        pushUndo();
+        if (val === "__blank__") {
+          slots[currentSlot] = E.createBlankStage(currentData().cols, currentData().rows, currentSlot);
+          showStatus("ステージをまっさらに初期化しました");
+        } else if (STAGES[val]) {
+          slots[currentSlot] = E.normalizeStageData(STAGES[val], currentSlot);
+          showStatus("サンプル「" + val + "」を読み込みました");
+        }
+        sampleSelect.value = "";
+        saveSlots();
+        refreshAllEdit();
+      });
+
+      clearTilesBtn.addEventListener("click", () => {
+        pushUndo();
+        currentData().tiles = [];
+        currentData().timedBombs = [];
+        currentData().enemies = [];
+        saveSlots();
+        showStatus("壁・ギミック・敵をすべて消去しました");
+        refreshAllEdit();
+      });
+
+      // 時限爆弾秒数 & 向き
+      Array.from(document.querySelectorAll(".tb-sec-btn")).forEach(btn => {
+        btn.addEventListener("click", () => {
+          timedBombSec = Number(btn.dataset.sec) || 30;
+          Array.from(document.querySelectorAll(".tb-sec-btn")).forEach(b => {
+            b.classList.toggle("active", b === btn);
+          });
+        });
+      });
+
+      Array.from(document.querySelectorAll(".dir-btn")).forEach(btn => {
+        btn.addEventListener("click", () => {
+          actorDir = Number(btn.dataset.dir) === RIGHT ? RIGHT : LEFT;
+          Array.from(document.querySelectorAll(".dir-btn")).forEach(b => {
+            b.classList.toggle("active", b === btn);
+          });
+        });
+      });
+
+      // 書き出し・読み込み
+      exportBundleBtn.addEventListener("click", () => {
+        exportArea.value = E.exportThreeStagesBundle(slots);
+        showStatus("3ステージまとめデータを出力しました");
+      });
+
+      exportSingleBtn.addEventListener("click", () => {
+        exportArea.value = E.formatSingleStageJS(currentData(), currentSlot + 1, "customStage" + (currentSlot + 1));
+        showStatus("現在のステージをJS形式で出力しました");
+      });
+
+      copyExportBtn.addEventListener("click", () => {
+        const text = exportArea.value.trim();
+        if (!text) {
+          exportArea.value = E.exportThreeStagesBundle(slots);
+        }
+        const val = exportArea.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(val).then(
+            () => showStatus("クリップボードにコピーしました"),
+            () => fallbackCopy()
+          );
+        } else {
+          fallbackCopy();
+        }
+        function fallbackCopy() {
+          exportArea.select();
+          try {
+            document.execCommand("copy");
+            showStatus("テキストをコピーしました");
+          } catch (_) {
+            showStatus("枠内を長押しまたはCtrl+Cでコピーしてください");
+          }
+        }
+      });
+
+      importBtn.addEventListener("click", () => {
+        const text = exportArea.value.trim();
+        if (!text) {
+          showStatus("下の枠にデータを貼り付けてください");
+          return;
+        }
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && (parsed.demo1 || parsed.demo2 || parsed.demo3)) {
+            pushUndo();
+            if (parsed.demo1) slots[0] = E.normalizeStageData(parsed.demo1, 0);
+            if (parsed.demo2) slots[1] = E.normalizeStageData(parsed.demo2, 1);
+            if (parsed.demo3) slots[2] = E.normalizeStageData(parsed.demo3, 2);
+            saveSlots();
+            showStatus("3ステージまとめデータを読み込みました");
+            refreshAllEdit();
+          } else if (parsed && typeof parsed === "object") {
+            pushUndo();
+            slots[currentSlot] = E.normalizeStageData(parsed, currentSlot);
+            saveSlots();
+            showStatus("現在のスロットへ読み込みました");
+            refreshAllEdit();
+          }
+        } catch (_) {
+          showStatus("読込失敗：JSON形式のテキストを貼り付けてください");
+        }
+      });
+
+      // ================= テストプレイ制御 =================
+      let playWorld = null;
+      let playRafId = null;
+      let stickBits = 0;
+      let keyBits = 0;
+      let hammerBtnDown = false;
+      const pressedKeys = new Set();
+
+      function currentBits() {
+        let b = stickBits | keyBits | (hammerBtnDown ? HAMMER : 0);
+        if ((b & (LEFT | RIGHT)) === (LEFT | RIGHT)) b &= ~(LEFT | RIGHT);
+        if ((b & (UP | DOWN)) === (UP | DOWN)) b &= ~(UP | DOWN);
+        return b;
+      }
+
+      function startPlayWorld() {
+        const cfg = E.toWorldConfig(currentData(), {
+          stageNumber: currentSlot + 1,
+          skipIntro: !playIntroChk.checked
+        });
+        playWorld = new GameWorld(cfg);
+        playWorld.mario.prevHammer = (currentBits() & HAMMER) !== 0;
+        playRenderer.resetCamera(playWorld);
+        playTitle.textContent = "テストプレイ（ステージ " + (currentSlot + 1) + "）";
+        playRenderer.draw(playWorld);
+        updatePlayStatus();
+      }
+
+      function updatePlayStatus() {
+        if (!playWorld) return;
+        const rem = playWorld.countBreakables();
+        let stText = "残り壊す対象: " + rem + "個 | F:" + playWorld.f;
+        if (playWorld.stageCleared) stText += " [CLEAR!]";
+        else if (playWorld.marioDead) stText += " [MISS]";
+        else if (playWorld.tryAgainActive) stText += " [TRY AGAIN]";
+        playStatus.textContent = stText;
+      }
+
+      const STEP_MS = 1000 / 60;
+      let lastTime = 0;
+      let acc = 0;
+
+      function playLoop(now) {
+        if (mode !== "play") return;
+        const dt = Math.min(100, now - lastTime);
+        lastTime = now;
+        acc += dt;
+        while (acc >= STEP_MS) {
+          playWorld.step(currentBits());
+          acc -= STEP_MS;
+          if (playWorld.deathFinished || playWorld.tryAgainFinished || playWorld.clearFinished) {
+            startPlayWorld();
+            acc = 0;
+            break;
+          }
+        }
+        playRenderer.draw(playWorld);
+        updatePlayStatus();
+        playRafId = requestAnimationFrame(playLoop);
+      }
+
+      function enterPlayMode() {
+        mode = "play";
+        editView.classList.add("hidden");
+        playView.classList.remove("hidden");
+        startPlayWorld();
+        lastTime = performance.now();
+        acc = 0;
+        playRafId = requestAnimationFrame(playLoop);
+      }
+
+      function exitPlayMode() {
+        mode = "edit";
+        if (playRafId) cancelAnimationFrame(playRafId);
+        playRafId = null;
+        pressedKeys.clear();
+        keyBits = 0;
+        resetStick();
+        setHammerPressed(false);
+        playView.classList.add("hidden");
+        editView.classList.remove("hidden");
+        refreshAllEdit();
+      }
+
+      startPlayBtn.addEventListener("click", enterPlayMode);
+      backToEditBtn.addEventListener("click", exitPlayMode);
+      playResetBtn.addEventListener("click", () => {
+        startPlayWorld();
+        playResetBtn.blur();
+      });
+      playIntroChk.addEventListener("change", () => {
+        startPlayWorld();
+        playIntroChk.blur();
+      });
+
+      // テストプレイ操作（スティック・ボタン・キーボード）
+      let activePointerId = null;
+      const MAX_R = 40;
+      const DEAD_R = 13;
+
+      function updateStickFromPoint(clientX, clientY) {
+        const rect = stickBase.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let dx = clientX - cx;
+        let dy = clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > MAX_R) {
+          dx = (dx / dist) * MAX_R;
+          dy = (dy / dist) * MAX_R;
+        }
+        stickKnob.style.transform = "translate(" + dx.toFixed(1) + "px, " + dy.toFixed(1) + "px)";
+        if (dist < DEAD_R) stickBits = 0;
+        else if (Math.abs(dx) >= Math.abs(dy)) stickBits = dx > 0 ? RIGHT : LEFT;
+        else stickBits = dy > 0 ? DOWN : UP;
+      }
+
+      function resetStick() {
+        activePointerId = null;
+        stickBits = 0;
+        stickKnob.style.transform = "translate(0px, 0px)";
+      }
+
+      stickBase.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        activePointerId = e.pointerId;
+        if (stickBase.setPointerCapture) {
+          try { stickBase.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+        updateStickFromPoint(e.clientX, e.clientY);
+      });
+      stickBase.addEventListener("pointermove", e => {
+        if (e.pointerId === activePointerId) {
+          e.preventDefault();
+          updateStickFromPoint(e.clientX, e.clientY);
+        }
+      });
+      stickBase.addEventListener("pointerup", e => { if (e.pointerId === activePointerId) resetStick(); });
+      stickBase.addEventListener("pointercancel", e => { if (e.pointerId === activePointerId) resetStick(); });
+
+      let hammerPointerId = null;
+      function setHammerPressed(on) {
+        hammerBtnDown = on;
+        hammerBtn.classList.toggle("pressed", on);
+      }
+      hammerBtn.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        hammerPointerId = e.pointerId;
+        if (hammerBtn.setPointerCapture) {
+          try { hammerBtn.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+        setHammerPressed(true);
+      });
+      hammerBtn.addEventListener("pointerup", e => {
+        if (e.pointerId === hammerPointerId) { hammerPointerId = null; setHammerPressed(false); }
+      });
+      hammerBtn.addEventListener("pointercancel", e => {
+        if (e.pointerId === hammerPointerId) { hammerPointerId = null; setHammerPressed(false); }
+      });
+
+      const KEY_MAP = {
+        ArrowUp: UP, KeyW: UP,
+        ArrowDown: DOWN, KeyS: DOWN,
+        ArrowLeft: LEFT, KeyA: LEFT,
+        ArrowRight: RIGHT, KeyD: RIGHT,
+        Space: HAMMER, KeyZ: HAMMER, KeyJ: HAMMER
+      };
+
+      function recomputeKeys() {
+        let b = 0;
+        for (const code of pressedKeys) b |= KEY_MAP[code] || 0;
+        keyBits = b;
+      }
+
+      window.addEventListener("keydown", e => {
+        if (mode !== "play") return;
+        if (KEY_MAP[e.code]) {
+          e.preventDefault();
+          pressedKeys.add(e.code);
+          recomputeKeys();
+        }
+      });
+      window.addEventListener("keyup", e => {
+        if (mode !== "play") return;
+        if (KEY_MAP[e.code]) {
+          pressedKeys.delete(e.code);
+          recomputeKeys();
+        }
+      });
+      window.addEventListener("blur", () => {
+        pressedKeys.clear();
+        recomputeKeys();
+        resetStick();
+        hammerPointerId = null;
+        setHammerPressed(false);
+      });
+
+      selectTool("wall1");
+      refreshAllEdit();
+    })();
+  </script>
+</body>
+</html>
