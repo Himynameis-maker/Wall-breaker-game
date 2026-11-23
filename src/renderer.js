@@ -49,17 +49,6 @@
     { core: "#fff2f6", mid: "#ffa4be", outer: "#883e5c" }  // 淡ローズ星
   ];
 
-  // ファミコン風の4段階ライン配色（クリーム白 → 黄金 → オレンジ → 朱赤）
-  const BANNER_ROW_COLORS = [
-    "#fff8d0",
-    "#ffd838",
-    "#ffd838",
-    "#ff8018",
-    "#ff8018",
-    "#dc3010",
-    "#dc3010"
-  ];
-
   // ファミコン8x8タイル基準（実描画7x7、太線ゴシック調）
   const PIXEL_FONT = {
     A: ["0011100", "0111110", "1100011", "1100011", "1111111", "1100011", "1100011"],
@@ -139,6 +128,8 @@
       this.viewHeight = options.viewHeight || 240;
       this.camY = 0;
       this.isIntroCamMoving = false;
+      this.startBannerBlinkTick = 0;
+      this.lastStartBannerTimer = null;
       this.bannerCache = new Map();
       this.spaceGradient = null;
       this.spaceFieldCache = new Map();
@@ -481,6 +472,8 @@
 
     resetCamera(world) {
       this.isIntroCamMoving = false;
+      this.startBannerBlinkTick = 0;
+      this.lastStartBannerTimer = null;
       this.camY = world.introActive ? INTRO_START_CAM_Y : this.getBaseCamY(world);
     }
 
@@ -611,11 +604,9 @@
         }
       }
 
-      // 文字本体（行ごとにパキッと色を切り替えるファミコン風グラデーション）
+      // 文字本体（白単色）
+      g.fillStyle = "#ffffff";
       for (let gy = 0; gy < totalGridH; gy++) {
-        const rowInGlyph = gy - padTop;
-        if (rowInGlyph < 0 || rowInGlyph >= glyphH) continue;
-        g.fillStyle = BANNER_ROW_COLORS[rowInGlyph] || "#ffffff";
         for (let gx = 0; gx < totalGridW; gx++) {
           if (hasBody(gx, gy)) {
             g.fillRect(gx * scale, gy * scale, scale, scale);
@@ -893,10 +884,21 @@
       ctx.restore();
 
       if (world.introActive) {
+        this.startBannerBlinkTick = 0;
+        this.lastStartBannerTimer = null;
         const text = "STAGE " + (world.stageNumber || 1);
         this.drawBannerText(ctx, w, text, 44);
       } else if (world.startBannerTimer > 0) {
-        this.drawBannerText(ctx, w, "START!", 44);
+        if (this.lastStartBannerTimer !== null && this.lastStartBannerTimer !== world.startBannerTimer) {
+          this.startBannerBlinkTick++;
+        }
+        this.lastStartBannerTimer = world.startBannerTimer;
+        if (Math.floor(this.startBannerBlinkTick / 6) % 2 === 0) {
+          this.drawBannerText(ctx, w, "START!", 44);
+        }
+      } else {
+        this.startBannerBlinkTick = 0;
+        this.lastStartBannerTimer = null;
       }
     }
   }
