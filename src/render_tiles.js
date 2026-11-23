@@ -77,6 +77,177 @@
       }
     },
 
+    drawServerCracks(ctx, x, yTop, level) {
+      if (level >= 1) {
+        ctx.fillStyle = "#121720";
+        ctx.fillRect(x + 10, yTop + 10, 2, 3);
+        ctx.fillRect(x + 9, yTop + 13, 2, 2);
+        ctx.fillRect(x + 7, yTop + 15, 2, 4);
+        ctx.fillRect(x + 6, yTop + 19, 2, 2);
+
+        ctx.fillStyle = "#e4eef8";
+        ctx.fillRect(x + 12, yTop + 11, 1, 2);
+        ctx.fillRect(x + 9, yTop + 16, 1, 2);
+      }
+      if (level >= 2) {
+        ctx.fillStyle = "#121720";
+        ctx.fillRect(x + 3, yTop + 11, 2, 3);
+        ctx.fillRect(x + 4, yTop + 14, 3, 2);
+        ctx.fillRect(x + 5, yTop + 21, 2, 4);
+        ctx.fillRect(x + 7, yTop + 24, 3, 2);
+        ctx.fillRect(x + 10, yTop + 25, 2, 4);
+        ctx.fillRect(x + 11, yTop + 21, 2, 3);
+
+        ctx.fillStyle = "#e4eef8";
+        ctx.fillRect(x + 5, yTop + 12, 1, 2);
+        ctx.fillRect(x + 7, yTop + 22, 1, 2);
+        ctx.fillRect(x + 9, yTop + 26, 1, 2);
+      }
+    },
+
+    drawServerWall(ctx, x, yTop, hp, frame) {
+      // 横幅: マスピッタリ16px (x+0 .. x+15)
+      // 高さ: 上の鉄骨下端(yTop+6)に届かない yTop+8 .. yTop+31 (高さ24px)
+
+      // 1. 天板トップ（左右角を1px面取り）
+      ctx.fillStyle = "#dce6f4";
+      ctx.fillRect(x + 2, yTop + 8, 12, 1);
+      ctx.fillStyle = "#7e8da2";
+      ctx.fillRect(x + 1, yTop + 8, 1, 1);
+      ctx.fillRect(x + 14, yTop + 8, 1, 1);
+
+      // 2. ケース外殻＋メインシルバー面 (yTop+9 .. yTop+30)
+      ctx.fillStyle = "#4c586c";
+      ctx.fillRect(x, yTop + 9, 1, 21);
+      ctx.fillStyle = "#262e3c";
+      ctx.fillRect(x + 15, yTop + 9, 1, 22);
+      ctx.fillStyle = "#6e7d92";
+      ctx.fillRect(x + 14, yTop + 9, 1, 21);
+      ctx.fillStyle = "#9aa8bc";
+      ctx.fillRect(x + 1, yTop + 9, 13, 21);
+
+      // 左エッジのハイライト
+      ctx.fillStyle = "#cfd9e6";
+      ctx.fillRect(x + 1, yTop + 9, 1, 21);
+      // 上部ベゼル面
+      ctx.fillStyle = "#b6c4d6";
+      ctx.fillRect(x + 1, yTop + 9, 13, 1);
+
+      // 3. 上段：サーバー用ドライブベイ 2段 (yTop+10 .. yTop+15)
+      ctx.fillStyle = "#8a99ad";
+      ctx.fillRect(x + 2, yTop + 10, 12, 5);
+      ctx.fillStyle = "#2b3444";
+      ctx.fillRect(x + 3, yTop + 10, 10, 1);
+      // ベイ1
+      ctx.fillStyle = "#606f84";
+      ctx.fillRect(x + 3, yTop + 11, 10, 1);
+      ctx.fillStyle = "#48b0ff";
+      ctx.fillRect(x + 4, yTop + 11, 1, 1); // 極小アクセスLED
+      ctx.fillStyle = "#222936";
+      ctx.fillRect(x + 11, yTop + 11, 2, 1); // ロックラッチ
+      // 仕切り溝
+      ctx.fillStyle = "#1a212d";
+      ctx.fillRect(x + 3, yTop + 12, 10, 1);
+      // ベイ2
+      ctx.fillStyle = "#606f84";
+      ctx.fillRect(x + 3, yTop + 13, 10, 1);
+      ctx.fillStyle = "#343f50";
+      ctx.fillRect(x + 4, yTop + 13, 5, 1);
+      ctx.fillStyle = "#3e4a5c";
+      ctx.fillRect(x + 11, yTop + 13, 2, 1);
+      // 下溝
+      ctx.fillStyle = "#1a212d";
+      ctx.fillRect(x + 3, yTop + 14, 10, 1);
+      // ベイ仕切りバー
+      ctx.fillStyle = "#b6c4d6";
+      ctx.fillRect(x + 2, yTop + 15, 12, 1);
+
+      // 4. 中段：電源スイッチ＋フロントポート (yTop+16 .. yTop+18)
+      ctx.fillStyle = "#384354";
+      ctx.fillRect(x + 3, yTop + 16, 3, 2);
+      ctx.fillStyle = "#dce6f4";
+      ctx.fillRect(x + 4, yTop + 16, 1, 1);
+      ctx.fillStyle = "#b6c4d6";
+      ctx.fillRect(x + 4, yTop + 17, 1, 1);
+      ctx.fillStyle = "#38d890";
+      ctx.fillRect(x + 6, yTop + 16, 1, 1); // 静かな電源ランプ
+
+      // 右側フロントポート・端子
+      ctx.fillStyle = "#1f2733";
+      ctx.fillRect(x + 9, yTop + 16, 1, 1);
+      ctx.fillRect(x + 11, yTop + 16, 2, 1);
+      ctx.fillStyle = "#6e7d92";
+      ctx.fillRect(x + 9, yTop + 17, 4, 1);
+      // 仕切りハイライト
+      ctx.fillStyle = "#cfd9e6";
+      ctx.fillRect(x + 2, yTop + 18, 12, 1);
+
+      // 5. 下段：無骨な吸気スリット・通気口 (yTop+19 .. yTop+28)
+      ctx.fillStyle = "#232b38";
+      ctx.fillRect(x + 3, yTop + 19, 10, 1);
+      for (let sy = 20; sy <= 26; sy += 2) {
+        // 暗いスリット穴（左右2列）＋ 中央縦リブ
+        ctx.fillStyle = "#181f2b";
+        ctx.fillRect(x + 3, yTop + sy, 4, 1);
+        ctx.fillRect(x + 9, yTop + sy, 4, 1);
+        ctx.fillStyle = "#707f94";
+        ctx.fillRect(x + 7, yTop + sy, 2, 1);
+        // ルーバー横桟
+        ctx.fillStyle = "#8493a8";
+        ctx.fillRect(x + 2, yTop + sy + 1, 12, 1);
+        ctx.fillStyle = "#9aa8bc";
+        ctx.fillRect(x + 2, yTop + sy + 1, 1, 1);
+      }
+      ctx.fillStyle = "#b6c4d6";
+      ctx.fillRect(x + 2, yTop + 28, 12, 1);
+
+      // 6. 下部スカート＆リベット＋ゴム足 (yTop+29 .. yTop+31)
+      ctx.fillStyle = "#8c9aae";
+      ctx.fillRect(x + 1, yTop + 29, 13, 1);
+      ctx.fillStyle = "#2d3644";
+      ctx.fillRect(x + 2, yTop + 29, 1, 1);
+      ctx.fillRect(x + 13, yTop + 29, 1, 1);
+
+      ctx.fillStyle = "#384354";
+      ctx.fillRect(x, yTop + 30, 1, 1);
+      ctx.fillStyle = "#5e6c80";
+      ctx.fillRect(x + 1, yTop + 30, 13, 1);
+      ctx.fillStyle = "#262e3c";
+      ctx.fillRect(x + 14, yTop + 30, 2, 1);
+
+      // 接地のゴム足とアンダー影
+      ctx.fillStyle = "#1b212c";
+      ctx.fillRect(x + 1, yTop + 31, 3, 1);
+      ctx.fillRect(x + 12, yTop + 31, 3, 1);
+      ctx.fillStyle = "#141923";
+      ctx.fillRect(x + 4, yTop + 31, 8, 1);
+
+      // 7. 10秒(600F)に1回、ケース内側からはみ出ない地味なツヤエフェクト
+      const cycle = ((frame || 0) >>> 0) % 600;
+      const shineStart = 582;
+      if (cycle >= shineStart) {
+        const t = cycle - shineStart; // 0 .. 17 (0.3秒間)
+        const diag = -2 + t * 2.2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x + 1, yTop + 9, 14, 21);
+        ctx.clip();
+        ctx.fillStyle = "rgba(240, 248, 255, 0.22)";
+        for (let ry = 0; ry <= 20; ry++) {
+          const cx = Math.round(diag - ry);
+          ctx.fillRect(x + 1 + cx, yTop + 9 + ry, 2, 1);
+        }
+        ctx.restore();
+      }
+
+      // 8. 叩かれたときのヒビ割れ（hp=2 -> レベル1、hp<=1 -> レベル2）
+      if (hp === 2) {
+        this.drawServerCracks(ctx, x, yTop, 1);
+      } else if (hp <= 1) {
+        this.drawServerCracks(ctx, x, yTop, 2);
+      }
+    },
+
     drawSandLadder(ctx, x, yTop, frame) {
       ctx.save();
       // 半透明の砂色ハシゴ本体（左右柱 x+1 / x+13）
@@ -284,7 +455,7 @@
       }
     },
 
-    drawBreakableWall(ctx, x, yTop, tile) {
+    drawBreakableWall(ctx, x, yTop, tile, frame) {
       const hp = tile & 0x07;
       const group = tile & 0x70; // 0x40=1回壁, 0x10=2回壁, 0x20=3回壁
 
@@ -313,24 +484,8 @@
           this.drawCracks(ctx, x, yTop, 1);
         }
       } else {
-        // 3回壊せる壁（重厚グレー鉄板）
-        ctx.fillStyle = "#3a4658";
-        ctx.fillRect(x + 1, yTop + 3, 14, 29);
-        ctx.fillStyle = "#768aa0";
-        ctx.fillRect(x + 2, yTop + 4, 12, 27);
-        ctx.fillStyle = "#a8bed4";
-        ctx.fillRect(x + 2, yTop + 4, 12, 2);
-        ctx.fillRect(x + 2, yTop + 17, 12, 1);
-        ctx.fillStyle = "#2b3442";
-        ctx.fillRect(x + 3, yTop + 7, 2, 2);
-        ctx.fillRect(x + 11, yTop + 7, 2, 2);
-        ctx.fillRect(x + 3, yTop + 27, 2, 2);
-        ctx.fillRect(x + 11, yTop + 27, 2, 2);
-        if (hp === 2) {
-          this.drawCracks(ctx, x, yTop, 1);
-        } else if (hp <= 1) {
-          this.drawCracks(ctx, x, yTop, 2);
-        }
+        // 3回壊せる壁（サーバー本体・シルバーケース）
+        this.drawServerWall(ctx, x, yTop, hp, frame);
       }
     },
 
@@ -523,7 +678,7 @@
         const tb = world.getTimedBombAt ? world.getTimedBombAt(row, col) : null;
         this.drawTimedBomb(ctx, x, yTop, tb, world.f);
       } else if ((val & 0x80) !== 0) {
-        this.drawBreakableWall(ctx, x, yTop, val);
+        this.drawBreakableWall(ctx, x, yTop, val, world.f);
       }
     },
 
