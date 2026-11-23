@@ -230,6 +230,198 @@
     ".LLLMMMMMMLL...."
   ];
 
+  // ドラム缶閉じ込め時の表面ペイント（全4キャラ5種・円筒歪曲＋汚れ＋手書き風赤い❌）
+  const TRAPPED_DRUM_PALETTES = {
+    player: {
+      K: "#101622",
+      W: "#edf2fa",
+      L: "#aebad0",
+      V: "#0b1220",
+      B: "#6ec8ff",
+      O: "#e06820",
+      P: "#8a3810",
+      D: "#4a2418"
+    },
+    spike: {
+      K: "#10141e",
+      H: "#c8d6ec",
+      M: "#7f8da2",
+      S: "#4c576b",
+      D: "#282f3c",
+      E: "#ff2828",
+      G: "#ffaa94"
+    },
+    spanagon: {
+      K: "#161c28",
+      H: "#fff27a",
+      Y: "#f0bc1e",
+      S: "#9e680a",
+      B: "#0e2228",
+      E: "#4af5e8",
+      W: "#ffffff",
+      G: "#47536a"
+    },
+    spanagonFast: {
+      K: "#160b12",
+      H: "#e86b24",
+      Y: "#a62c14",
+      S: "#5e1308",
+      B: "#18080e",
+      E: "#ff2a24",
+      W: "#ffe08a",
+      G: "#3a2a36"
+    },
+    eggplant: {
+      K: "#102010",
+      H: "#d6ff58",
+      G: "#88d828",
+      D: "#448014",
+      P: "#16241c",
+      M: "#98acc0",
+      L: "#ff4828",
+      Y: "#ffda38"
+    }
+  };
+
+  const TRAPPED_DRUM_FACES = {
+    player: [
+      "................",
+      "................",
+      ".....KKKKKK.....",
+      "...KKWWWWWWKK...",
+      "..KWWWWWWWWWLK..",
+      "..KWWVVVVVVVLK..",
+      "..KWVVVVVBBWLK..",
+      "..KDVVVVVVBVDD..",
+      "..KWVVVVVVVVLK..",
+      "..KWVVVVVVVVLK..",
+      "..KLLVVVVVVWLK..",
+      "...KKWWWWWLLK...",
+      "....KLLWWWLK....",
+      "....KOOOOPPK....",
+      "....KDDKKDDK....",
+      ".....KKKKKK.....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    spike: [
+      "................",
+      "................",
+      ".....KKKKKK.....",
+      "...KKHHHHHHKK...",
+      "..KHHHHHHHMMMK..",
+      "..KHHKKKKKKMMK..",
+      "..KHMKEGKKEGMK..",
+      "..KDMKKKKKKMSD..",
+      "..KHMMKKKKMMMK..",
+      "...KMMMSSMMMK...",
+      "...KMSKKKKKMK...",
+      "...KMHKHKHKMK...",
+      "....KMKKKKMK....",
+      "....KSSDDSSK....",
+      ".....KDDDDK.....",
+      "......KKKK......",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    spanagon: [
+      "................",
+      "................",
+      "....KKKKKKKK....",
+      "..KKHHHHHHHHKK..",
+      "..KHHYYYYYYSSK..",
+      "..KYKBBBBBBKSK..",
+      "..KYKEWBBWEKSK..",
+      "..KGKBEEEEBKGK..",
+      "..KYKBBBBBBKSK..",
+      "..KSKBBBBBBKSK..",
+      "..KSSKKKKKKSSK..",
+      "...KSSSSSSSSK...",
+      "....KKGGGGKK....",
+      ".....KKGGKK.....",
+      "......KKKK......",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    eggplant: [
+      "................",
+      "................",
+      "....KLK.........",
+      ".....M..........",
+      ".....M..........",
+      "...KKKKKKKKKK...",
+      "..KHHHHHHHHHHK..",
+      "..KGGGGGGGGDDK..",
+      "..KGPPPPPPGGDK..",
+      "..KGGGGGGGGYDK..",
+      "..KDDDDPPPDLDK..",
+      "..KDDDDDDDDDDK..",
+      "...KKKKKKKKKK...",
+      "....KMM..MMK....",
+      "....KDD..DDK....",
+      ".....KK..KK.....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ]
+  };
+  TRAPPED_DRUM_FACES.spanagonFast = TRAPPED_DRUM_FACES.spanagon;
+
+  // 汚れた手書き風赤い❌オーバーレイ（16×21、ドラム缶胴体 yTop+11..31 に重ねる）
+  const TRAPPED_DRUM_CROSS_PALETTE = {
+    X: "#ff1c24", // 鮮やかな赤（メイン線）
+    R: "#b00c14", // 滲み・側面回り込みの暗赤
+    T: "#ff625c", // ペンキ重なりハイライト
+    O: "#46080c", // 赤ドラム缶と馴染まないための焦げ赤縁
+    S: "#2a1410", // 煤・擦れ汚れ
+    C: "#7a261c"  // 剥げ・錆汚れ
+  };
+
+  const TRAPPED_DRUM_CROSS_OVERLAY = [
+    "................",
+    "................",
+    "..S.............",
+    "..RR.......RRR..",
+    "..RXR.....RRXR..",
+    "...OXR...RXRO...",
+    "....RXR.RXRS....",
+    "....SRXRXRS.....",
+    ".....OTXTO......",
+    ".....RXRXR......",
+    "....RXR.RXR.....",
+    "...ORX...RXRO...",
+    "...RXR....RXR...",
+    "..RRO.....SRXO..",
+    "..RS.......CRR..",
+    "............RS..",
+    "...S............",
+    "................",
+    "................",
+    "................",
+    "................"
+  ];
+
+  function getTrappedActorKind(actor) {
+    if (!actor) return null;
+    if (actor.isMario) return "player";
+    if (!actor.isEnemy) return "spike";
+    if (actor.enemyType === "eggplant") return "eggplant";
+    if (actor.enemyType === "spanagonFast") return "spanagonFast";
+    return "spanagon";
+  }
+
   function bakeTile16x24(rows, palette) {
     const c = document.createElement("canvas");
     c.width = 16;
@@ -252,6 +444,64 @@
   if (!R || !R.Renderer) return;
 
   Object.assign(R.Renderer.prototype, {
+    getTrappedDrumSprite(kind) {
+      if (!kind) return null;
+      if (!this.trappedDrumSprites) {
+        this.trappedDrumSprites = {};
+      }
+      if (this.trappedDrumSprites[kind]) {
+        return this.trappedDrumSprites[kind];
+      }
+
+      const faceRows = TRAPPED_DRUM_FACES[kind];
+      const facePal = TRAPPED_DRUM_PALETTES[kind];
+      if (!faceRows || !facePal) return null;
+
+      const c = document.createElement("canvas");
+      c.width = 16;
+      c.height = 21;
+      const g = c.getContext("2d");
+
+      // 1. 閉じ込められたキャラの顔（ドラム缶の丸みに沿った形状）を描画
+      for (let y = 0; y < 21; y++) {
+        const line = faceRows[y] || "";
+        for (let x = 0; x < 16; x++) {
+          const color = facePal[line[x]];
+          if (!color) continue;
+          g.fillStyle = color;
+          g.fillRect(x, y, 1, 1);
+        }
+      }
+
+      // 2. 顔ペイントにだけドラム缶の補強リブ凹凸と左右円筒カーブ陰影を馴染ませる
+      g.save();
+      g.globalCompositeOperation = "source-atop";
+      g.fillStyle = "rgba(255, 224, 150, 0.16)";
+      g.fillRect(0, 6, 16, 1);
+      g.fillRect(0, 14, 16, 1);
+      g.fillStyle = "rgba(24, 8, 6, 0.34)";
+      g.fillRect(0, 7, 16, 1);
+      g.fillRect(0, 15, 16, 1);
+      g.fillStyle = "rgba(20, 6, 6, 0.20)";
+      g.fillRect(1, 0, 2, 21);
+      g.fillRect(12, 0, 3, 21);
+      g.restore();
+
+      // 3. 汚れた手書き風赤い❌マークを重ねる
+      for (let y = 0; y < 21; y++) {
+        const line = TRAPPED_DRUM_CROSS_OVERLAY[y] || "";
+        for (let x = 0; x < 16; x++) {
+          const color = TRAPPED_DRUM_CROSS_PALETTE[line[x]];
+          if (!color) continue;
+          g.fillStyle = color;
+          g.fillRect(x, y, 1, 1);
+        }
+      }
+
+      this.trappedDrumSprites[kind] = c;
+      return c;
+    },
+
     drawCracks(ctx, x, yTop, level) {
       ctx.fillStyle = "#181014";
       if (level >= 1) {
@@ -724,7 +974,7 @@
       }
     },
 
-    drawDrum(ctx, x, yTop) {
+    drawDrum(ctx, x, yTop, trappedActor) {
       // 天板（yTop+6..+11）+ 円筒胴体（yTop+11..+32）：天板に乗った時の足元 yTop+11 と一致
       ctx.fillStyle = "#6c1c18";
       ctx.fillRect(x + 1, yTop + 6, 14, 5);
@@ -747,6 +997,15 @@
       ctx.fillStyle = "#e8a858";
       ctx.fillRect(x + 3, yTop + 17, 8, 1);
       ctx.fillRect(x + 3, yTop + 25, 8, 1);
+
+      // 閉じ込められたキャラの顔＋汚れた手書き風赤い❌（ドラムの丸みに沿って歪曲）
+      if (trappedActor) {
+        const kind = getTrappedActorKind(trappedActor);
+        const overlay = this.getTrappedDrumSprite(kind);
+        if (overlay) {
+          ctx.drawImage(overlay, x, yTop + 11);
+        }
+      }
     },
 
     drawBomb(ctx, x, yTop, frame) {
@@ -884,7 +1143,7 @@
       ctx.fillRect(cx, cy, 1, 1);
     },
 
-    drawTileAt(ctx, x, yTop, val, world) {
+    drawTileAt(ctx, x, yTop, val, world, isFalling = false) {
       if (val === TILE.EMPTY || isHoleTile(val) || val === TILE.HOLE_FALLING || val === TILE.DRUM_FALLING) {
         return;
       }
@@ -934,7 +1193,13 @@
       } else if (val === TILE.DOOR || isDoorRelatedTile(val)) {
         this.drawDoor(ctx, x, yTop, val, world.f);
       } else if (val === TILE.DRUM) {
-        this.drawDrum(ctx, x, yTop);
+        let trapped = null;
+        if (!isFalling && world && typeof world.getDrumTrappedActor === "function") {
+          const row = Math.floor(yTop / 32);
+          const col = Math.floor(x / 16);
+          trapped = world.getDrumTrappedActor(row, col);
+        }
+        this.drawDrum(ctx, x, yTop, trapped);
       } else if (val === TILE.BOMB) {
         this.drawBomb(ctx, x, yTop, world.f);
       } else if (val === TILE.TIMED_BOMB) {
@@ -967,7 +1232,7 @@
           if (fp.origAboveTile === TILE.TIMED_BOMB && fp.timedBomb) {
             this.drawTimedBomb(ctx, x, yTop, fp.timedBomb, world.f);
           } else {
-            this.drawTileAt(ctx, x, yTop, fp.origAboveTile, world);
+            this.drawTileAt(ctx, x, yTop, fp.origAboveTile, world, true);
           }
         }
       }
