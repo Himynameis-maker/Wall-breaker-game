@@ -248,6 +248,177 @@
       }
     },
 
+    drawCrateRackWall(ctx, x, yTop) {
+      // 横幅: マスピッタリ16px (x+0 .. x+15)
+      // 高さ: 上の鉄骨下端(yTop+6)に届かない yTop+8 .. yTop+31 (高さ24px)
+
+      // 1. 天板トップ（木箱上縁、左右角を1px面取り）
+      ctx.fillStyle = "#dc9850";
+      ctx.fillRect(x + 2, yTop + 8, 12, 1);
+      ctx.fillStyle = "#7a481e";
+      ctx.fillRect(x + 1, yTop + 8, 1, 1);
+      ctx.fillRect(x + 14, yTop + 8, 1, 1);
+
+      // 2. 上部木枠 (yTop+9 .. yTop+10)
+      ctx.fillStyle = "#7a481e";
+      ctx.fillRect(x, yTop + 9, 1, 1);
+      ctx.fillStyle = "#b47234";
+      ctx.fillRect(x + 1, yTop + 9, 14, 1);
+      ctx.fillStyle = "#9c5e28";
+      ctx.fillRect(x + 5, yTop + 9, 4, 1); // 木目
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x + 2, yTop + 9, 1, 1); // 釘
+      ctx.fillRect(x + 13, yTop + 9, 1, 1);
+      ctx.fillRect(x + 15, yTop + 9, 1, 1);
+
+      ctx.fillStyle = "#7a481e";
+      ctx.fillRect(x, yTop + 10, 1, 1);
+      ctx.fillStyle = "#c88440";
+      ctx.fillRect(x + 1, yTop + 10, 1, 1);
+      ctx.fillStyle = "#5a3314";
+      ctx.fillRect(x + 2, yTop + 10, 12, 1); // 上板の裏影
+      ctx.fillStyle = "#8c5424";
+      ctx.fillRect(x + 14, yTop + 10, 1, 1);
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x + 15, yTop + 10, 1, 1);
+
+      // 3. 左右の木柱＋中央の剥き出しラック空間 (yTop+11 .. yTop+24)
+      for (let dy = 11; dy <= 24; dy++) {
+        ctx.fillStyle = "#7a481e";
+        ctx.fillRect(x, yTop + dy, 1, 1);
+        ctx.fillStyle = (dy === 14 || dy === 20) ? "#a4642a" : "#c88440";
+        ctx.fillRect(x + 1, yTop + dy, 1, 1);
+        ctx.fillStyle = "#141922";
+        ctx.fillRect(x + 2, yTop + dy, 12, 1);
+        ctx.fillStyle = (dy === 16 || dy === 22) ? "#7a481e" : "#8c5424";
+        ctx.fillRect(x + 14, yTop + dy, 1, 1);
+        ctx.fillStyle = "#42240e";
+        ctx.fillRect(x + 15, yTop + dy, 1, 1);
+      }
+
+      // 木枠上隅の当て木
+      ctx.fillStyle = "#8c5424";
+      ctx.fillRect(x + 2, yTop + 11, 1, 1);
+      ctx.fillRect(x + 13, yTop + 11, 1, 1);
+
+      // 剥き出しラック支柱レール（左右の穴あき金属柱 x+2, x+13）
+      for (let dy = 12; dy <= 24; dy++) {
+        const isHole = (dy & 1) === 1;
+        ctx.fillStyle = isHole ? "#252d3a" : "#8c9cb0";
+        ctx.fillRect(x + 2, yTop + dy, 1, 1);
+        ctx.fillRect(x + 13, yTop + dy, 1, 1);
+      }
+
+      // ラック1段目：サーバーユニット (yTop+12 .. yTop+15)
+      ctx.fillStyle = "#58667a";
+      ctx.fillRect(x + 3, yTop + 12, 10, 1);
+      ctx.fillStyle = "#a4b4c8";
+      ctx.fillRect(x + 3, yTop + 12, 1, 1);
+      ctx.fillRect(x + 12, yTop + 12, 1, 1);
+
+      ctx.fillStyle = "#2e3746";
+      ctx.fillRect(x + 3, yTop + 13, 10, 1);
+      ctx.fillStyle = "#141922";
+      ctx.fillRect(x + 4, yTop + 13, 1, 1);
+      ctx.fillRect(x + 6, yTop + 13, 1, 1);
+      ctx.fillStyle = "#38d078";
+      ctx.fillRect(x + 10, yTop + 13, 1, 1);
+      ctx.fillStyle = "#e04838";
+      ctx.fillRect(x + 11, yTop + 13, 1, 1);
+
+      ctx.fillStyle = "#242c38";
+      ctx.fillRect(x + 3, yTop + 14, 10, 1);
+      ctx.fillStyle = "#3b4658";
+      ctx.fillRect(x + 3, yTop + 15, 10, 1);
+      ctx.fillStyle = "#3898e0";
+      ctx.fillRect(x + 8, yTop + 13, 1, 3); // 剥き出し青ケーブル
+
+      // ラック2段目：中身・基板・ヒートシンク剥き出し棚 (yTop+16 .. yTop+19)
+      ctx.fillStyle = "#d88838";
+      ctx.fillRect(x + 4, yTop + 16, 1, 1); // 銅配線
+      ctx.fillStyle = "#3898e0";
+      ctx.fillRect(x + 9, yTop + 16, 1, 1); // 青配線
+
+      ctx.fillStyle = "#343e4f";
+      ctx.fillRect(x + 3, yTop + 17, 10, 1);
+      ctx.fillStyle = "#9aaac0";
+      ctx.fillRect(x + 4, yTop + 17, 1, 1); // ヒートシンクフィン
+      ctx.fillRect(x + 6, yTop + 17, 1, 1);
+      ctx.fillStyle = "#d88838";
+      ctx.fillRect(x + 8, yTop + 17, 2, 1); // 銅パーツ
+      ctx.fillStyle = "#4ca8ec";
+      ctx.fillRect(x + 11, yTop + 17, 1, 1); // 青端子
+
+      ctx.fillStyle = "#68788e";
+      ctx.fillRect(x + 3, yTop + 18, 10, 1);
+      ctx.fillStyle = "#a4b4c8";
+      ctx.fillRect(x + 3, yTop + 18, 1, 1);
+      ctx.fillRect(x + 12, yTop + 18, 1, 1);
+
+      ctx.fillStyle = "#c4742c";
+      ctx.fillRect(x + 5, yTop + 19, 1, 1); // 垂れた配線
+
+      // ラック3段目：下部サーバー電源／ストレージBOX (yTop+20 .. yTop+24)
+      ctx.fillStyle = "#8494a8";
+      ctx.fillRect(x + 3, yTop + 20, 10, 1);
+      ctx.fillStyle = "#343e50";
+      ctx.fillRect(x + 3, yTop + 21, 10, 3);
+      ctx.fillStyle = "#181e28";
+      ctx.fillRect(x + 4, yTop + 22, 4, 1); // 吸気口
+      ctx.fillStyle = "#a4b4c8";
+      ctx.fillRect(x + 9, yTop + 22, 3, 1); // 金属取っ手
+      ctx.fillStyle = "#e07828";
+      ctx.fillRect(x + 11, yTop + 21, 1, 1); // 電源スイッチ
+
+      // 4. 下部木箱板 (yTop+25 .. yTop+31)
+      // 木箱前板の上縁ハイライト
+      ctx.fillStyle = "#7a481e";
+      ctx.fillRect(x, yTop + 25, 1, 1);
+      ctx.fillStyle = "#dc9850";
+      ctx.fillRect(x + 1, yTop + 25, 14, 1);
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x + 15, yTop + 25, 1, 1);
+
+      // 木板1段目
+      ctx.fillStyle = "#7a481e";
+      ctx.fillRect(x, yTop + 26, 1, 2);
+      ctx.fillStyle = "#b47234";
+      ctx.fillRect(x + 1, yTop + 26, 14, 2);
+      ctx.fillStyle = "#985b26";
+      ctx.fillRect(x + 4, yTop + 26, 6, 1);
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x + 2, yTop + 26, 1, 1);
+      ctx.fillRect(x + 13, yTop + 26, 1, 1);
+      ctx.fillRect(x + 15, yTop + 26, 1, 2);
+
+      // 板の合わせ目溝
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x, yTop + 28, 16, 1);
+
+      // 木板2段目
+      ctx.fillStyle = "#6e3f18";
+      ctx.fillRect(x, yTop + 29, 1, 2);
+      ctx.fillStyle = "#9c6028";
+      ctx.fillRect(x + 1, yTop + 29, 14, 2);
+      ctx.fillStyle = "#b47234";
+      ctx.fillRect(x + 3, yTop + 29, 4, 1);
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x + 2, yTop + 30, 1, 1);
+      ctx.fillRect(x + 13, yTop + 30, 1, 1);
+      ctx.fillStyle = "#381d0a";
+      ctx.fillRect(x + 15, yTop + 29, 1, 2);
+
+      // 接地下端・底枠影
+      ctx.fillStyle = "#2b1708";
+      ctx.fillRect(x, yTop + 31, 1, 1);
+      ctx.fillRect(x + 15, yTop + 31, 1, 1);
+      ctx.fillStyle = "#42240e";
+      ctx.fillRect(x + 1, yTop + 31, 3, 1);
+      ctx.fillRect(x + 12, yTop + 31, 3, 1);
+      ctx.fillStyle = "#5e3616";
+      ctx.fillRect(x + 4, yTop + 31, 8, 1);
+    },
+
     drawSandLadder(ctx, x, yTop, frame) {
       ctx.save();
       // 半透明の砂色ハシゴ本体（左右柱 x+1 / x+13）
@@ -460,16 +631,8 @@
       const group = tile & 0x70; // 0x40=1回壁, 0x10=2回壁, 0x20=3回壁
 
       if (group === 0x40) {
-        // 1回壊せる壁（軟質レンガ）
-        ctx.fillStyle = "#6e2e1d";
-        ctx.fillRect(x + 1, yTop + 3, 14, 29);
-        ctx.fillStyle = "#b85432";
-        ctx.fillRect(x + 2, yTop + 4, 5, 5);
-        ctx.fillRect(x + 9, yTop + 4, 5, 5);
-        ctx.fillRect(x + 2, yTop + 11, 12, 5);
-        ctx.fillRect(x + 2, yTop + 18, 5, 5);
-        ctx.fillRect(x + 9, yTop + 18, 5, 5);
-        ctx.fillRect(x + 2, yTop + 25, 12, 6);
+        // 1回壊せる壁（木箱の中身剥き出しラック）
+        this.drawCrateRackWall(ctx, x, yTop);
       } else if (group === 0x10) {
         // 2回壊せる壁（硬質ブロンズ/橙パネル）
         ctx.fillStyle = "#5a4220";
