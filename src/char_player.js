@@ -32,8 +32,8 @@
     B: "#435068"
   };
 
-  // 上半身（待機・通過コマ中立腕・高い位置 16行）
-  const UPPER_ARM_FIXED = [
+  // 待機用・通過コマ用の上半身（高い位置 16行：腕は体に沿って自然に少し曲げ）
+  const UPPER_IDLE = [
     "................",
     ".....WWWWWW.....",
     "....WWWWWWWW....",
@@ -43,20 +43,41 @@
     "...LLLWWVVVVVV..",
     "....LLWWWWWW....",
     ".....OOOOOO.....",
-    "..BBBWWWWWWW....",
-    ".BBBBWDDWWCWW...",
-    ".BBBBWDWWDWWW...",
-    ".BBBBWDWWDWWW...",
-    ".BBBLLDWWDWWW...",
-    "..BBLWWDOOWWW...",
-    "...BBLDWWWWWW..."
+    "...BBWWWWWW.....",
+    "..BBBWDWWWCW....",
+    "..BBBWDWWDWW....",
+    "..BBBWDWWDDWW...",
+    "..BBBLDWWDWWW...",
+    "...BBLWDOOWWW...",
+    "...BBLWWWWWW...."
   ];
 
-  const UPPER_ARM_FIXED_LOW = ["................"].concat(UPPER_ARM_FIXED);
+  // 歩行0コマ目（1px沈み 17行）：手前腕を前上へ「くの字」に振り上げ、奥腕を後ろへ引く
+  const UPPER_WALK_0 = [
+    "................",
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "...BBWWWWWW.....",
+    "..BBBWDWWWCW....",
+    "..BBBWDWWDWW.OO.",
+    "..BBBLDWWWWWDOO.",
+    "...PPLWDDDDDD...",
+    "...BBLWWWWWW....",
+    "....WWWWWWWW...."
+  ];
 
-  // 上半身（くの字腕振り4コマ）
-  // 0コマ目（1px沈み 17行）：肘をくの字に曲げて手前腕を前上へ振り、奥腕を後ろへ
-  const UPPER_ARM_0 = [
+  // 歩行1・3コマ目（高い位置 16行）：通過中は腕を自然に下ろしつつ肘を軽く曲げる
+  const UPPER_WALK_1 = UPPER_IDLE;
+
+  // 歩行2コマ目（1px沈み 17行）：手前腕を後ろへ「くの字」に引き、奥腕を前へ振り上げる
+  const UPPER_WALK_2 = [
     "................",
     "................",
     ".....WWWWWW.....",
@@ -67,38 +88,16 @@
     "...LLLWWVVVVVV..",
     "....LLWWWWWW....",
     ".....OOOOOO.....",
-    "..BBBWWWWWWW....",
-    ".BBBBWDDWWCWW...",
-    ".BBBBDWWDWCWW...",
-    ".BBBDDWWDDDDOO..",
-    "..BBLDWWWWWWOO..",
-    "..BBLPDDDDDD....",
-    "...BBLDWWWWWW..."
+    "...BBWWWWWW.....",
+    "..BBBWDWWWCW.PP.",
+    "..BBBDWWWDWWLPP.",
+    ".OODDWWWDWWLL...",
+    ".OOWWWDDDDWWW...",
+    "...DWWWWWWWW....",
+    "....WWWWWWWW...."
   ];
-  // 1コマ目（高い位置 16行）：腕は体側中立
-  const UPPER_ARM_1 = UPPER_ARM_FIXED;
-  // 2コマ目（1px沈み 17行）：肘をくの字にバックパック後ろへ引き、奥腕を前へ振る
-  const UPPER_ARM_2 = [
-    "................",
-    "................",
-    ".....WWWWWW.....",
-    "....WWWWWWWW....",
-    "...WWWWVVVVVV...",
-    "...WWWVVVVVRRV..",
-    "...WWWVVVVVVVV..",
-    "...LLLWWVVVVVV..",
-    "....LLWWWWWW....",
-    ".....OOOOOO.....",
-    "..BBBWWWWWWW....",
-    ".BBBBWDDWWCWW...",
-    ".BBBDDWWDWWLPP..",
-    ".DDWWWDWWWLLPP..",
-    ".BBDWWDWWWWDD...",
-    "..BBLDOOWWWWW...",
-    "...BBLDWWWWWW..."
-  ];
-  // 3コマ目（高い位置 16行）：腕は体側中立
-  const UPPER_ARM_3 = UPPER_ARM_FIXED;
+
+  const UPPER_WALK_3 = UPPER_IDLE;
 
   const LOWER_IDLE = [
     "....WWWWWWWW....",
@@ -113,55 +112,55 @@
     "....BBBB.BBBB..."
   ];
 
-  // 足運び4コマ（手前足＝白W、奥足＝暗L/D。前足は x=11..14 までしっかり前へ踏み出す）
-  const LOWER_FOOT_0 = [
-    "....WWWWWWWW....",
-    "....WWWWWLLL....",
-    "...WWWW..LLLL...",
-    "...LLL....LLLL..",
-    "..LLLL.....DDD..",
-    "..DDD......DDD..",
-    "..BBB......BBB..",
-    ".BBBB......BBBB.",
-    ".BBBB......BBBB."
-  ];
-  const LOWER_FOOT_1 = [
-    "....WWWWWWWW....",
+  // 足運び4コマ（手前足＝白W、奥足＝暗L/D 固定。0/2は9行=沈み踏み込み、1/3は10行=軸足立ち＋膝高く上げ）
+  const LOWER_WALK_0 = [
     "....WWWWWWWW....",
     "....WWWWLLLL....",
-    "....WWWLLLL.....",
-    "....LLLDDDD.....",
-    "...LLL.DDD......",
-    "..DDDD.BBB......",
-    "..BBBB.BBB......",
-    ".......BBBB.....",
-    ".......BBBB....."
+    "...WWWW..LLLL...",
+    "...LLL....DDD...",
+    "..LLLL....DDD...",
+    "..DDD.....DDD...",
+    "..BBB.....BBB...",
+    ".BBBB.....BBBB..",
+    "..........BBBB.."
   ];
-  const LOWER_FOOT_2 = [
-    "....WWWWWWWW....",
-    "....LLLWWWWW....",
-    "...LLLL..WWWW...",
-    "...DDD....WWWW..",
-    "..DDD......LLL..",
-    "..DDD......DDD..",
-    "..BBB......BBB..",
-    ".BBBB......BBBB.",
-    ".BBBB......BBBB."
-  ];
-  const LOWER_FOOT_3 = [
-    "....WWWWWWWW....",
+  const LOWER_WALK_1 = [
     "....WWWWWWWW....",
     "....LLLLWWWW....",
-    "....LLLWWWW.....",
-    "....DDDWWWW.....",
-    "...DDD.LLL......",
-    "..DDDD.BBB......",
-    "..BBBB.BBB......",
-    ".......BBBB.....",
-    ".......BBBB....."
+    ".....LLLWWWWWW..",
+    ".....DDD.LLLLL..",
+    ".....DDD..DDDD..",
+    ".....DDD..BBBB..",
+    ".....BBB..BBBB..",
+    ".....BBB........",
+    ".....BBBB.......",
+    ".....BBBB......."
+  ];
+  const LOWER_WALK_2 = [
+    "....WWWWWWWW....",
+    "....LLLLWWWW....",
+    "...LLLL..WWWW...",
+    "...DDD....LLL...",
+    "...DDD....LLL...",
+    "..DDD.....DDD...",
+    "..BBB.....BBB...",
+    "..BBBB....BBBB..",
+    "..........BBBB.."
+  ];
+  const LOWER_WALK_3 = [
+    "....WWWWWWWW....",
+    "....WWWWLLLL....",
+    ".....WWWLLLLLL..",
+    ".....LLL.DDDDD..",
+    ".....DDD..DDDD..",
+    ".....DDD..BBBB..",
+    ".....BBB..BBBB..",
+    ".....BBB........",
+    ".....BBBB.......",
+    ".....BBBB......."
   ];
 
-  // 着地スタン状態（State 11：19F）用：尻もち ＋ 2段階起き上がり
+  // 着地スタン（State 11：19F）用：尻もち ＋ 2段階起き上がり
   const ASTRO_SIT = [
     "................",
     "................",
@@ -459,23 +458,18 @@
     "..BBBB....BBBB.."
   ];
 
-  const WALK_STEP_FRAMES = 4; // 歩行コマ切替間隔（4Fごと）
-  const ARM_DELAY_FRAMES = 0; // 歩き始めから即くの字の腕振りを行う
+  const WALK_STEP_FRAMES = 5; // 歩行コマ切替間隔（5Fごと）
 
   Object.assign(R.Renderer.prototype, {
     initPlayerSprites() {
       if (typeof makeSpriteSet !== "function") return;
       this.playerSprites = makeSpriteSet(
         {
-          idle: UPPER_ARM_FIXED.concat(LOWER_IDLE),
-          foot0: UPPER_ARM_FIXED_LOW.concat(LOWER_FOOT_0),
-          foot1: UPPER_ARM_FIXED.concat(LOWER_FOOT_1),
-          foot2: UPPER_ARM_FIXED_LOW.concat(LOWER_FOOT_2),
-          foot3: UPPER_ARM_FIXED.concat(LOWER_FOOT_3),
-          walk0: UPPER_ARM_0.concat(LOWER_FOOT_0),
-          walk1: UPPER_ARM_1.concat(LOWER_FOOT_1),
-          walk2: UPPER_ARM_2.concat(LOWER_FOOT_2),
-          walk3: UPPER_ARM_3.concat(LOWER_FOOT_3),
+          idle: UPPER_IDLE.concat(LOWER_IDLE),
+          walk0: UPPER_WALK_0.concat(LOWER_WALK_0),
+          walk1: UPPER_WALK_1.concat(LOWER_WALK_1),
+          walk2: UPPER_WALK_2.concat(LOWER_WALK_2),
+          walk3: UPPER_WALK_3.concat(LOWER_WALK_3),
           sit: ASTRO_SIT,
           recover0: ASTRO_RECOVER_0,
           recover1: ASTRO_RECOVER_1,
@@ -837,7 +831,7 @@
       } else if (slot.state === 1) {
         const wf = slot.walkFrames || 0;
         const step = Math.floor(wf / WALK_STEP_FRAMES) & 3;
-        poseKey = (wf >= ARM_DELAY_FRAMES ? "walk" : "foot") + step;
+        poseKey = "walk" + step;
         if (step === 0 || step === 2) {
           stepOffsetY = 1;
         }
