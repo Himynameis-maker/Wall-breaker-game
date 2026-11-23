@@ -808,6 +808,7 @@
       if (slot.state === 15) {
         if (world.getTile(slot.row, slot.col) === TILE.DRUM) {
           slot.state = 16;
+          slot.trapOrder = (world.nextTrapOrder = (world.nextTrapOrder || 0) + 1);
         }
         return;
       }
