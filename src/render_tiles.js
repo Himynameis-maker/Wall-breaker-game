@@ -647,29 +647,36 @@
         lampColor = "#48f078";
       }
 
+      // 上の足場(yTop+0..5)に食い込まず1pxの隙間を空けた高さ25px設計（yTop+7..31）
+      const doorTop = yTop + 7;
+      const panelTop = doorTop + 3; // yTop+10
+      const panelH = 32 - (panelTop - yTop); // 22px
+
       // 外枠・自動ドア上部センサーレール（開いた開口部は塗りつぶさず透過くり抜き）
       ctx.fillStyle = "#3c8084";
-      ctx.fillRect(x + 1, yTop + 3, 14, 3);
-      ctx.fillRect(x + 1, yTop + 6, 1, 26);
-      ctx.fillRect(x + 14, yTop + 6, 1, 26);
+      ctx.fillRect(x + 1, doorTop, 14, 3);
+      ctx.fillRect(x + 1, panelTop, 1, panelH);
+      ctx.fillRect(x + 14, panelTop, 1, panelH);
       ctx.fillStyle = "#6cc8c8";
-      ctx.fillRect(x + 2, yTop + 3, 12, 1);
+      ctx.fillRect(x + 2, doorTop, 12, 1);
+      ctx.fillStyle = "#245458";
+      ctx.fillRect(x + 2, doorTop + 2, 12, 1);
 
       // センサーランプ
       ctx.fillStyle = lampColor;
-      ctx.fillRect(x + 7, yTop + 4, 2, 1);
+      ctx.fillRect(x + 7, doorTop + 1, 2, 1);
 
       // 全開時の枠内側の戸袋影（中央 x+3..x+12 はくり抜きで奥が見える）
       if (panelW === 0) {
         ctx.fillStyle = "#0e1a26";
-        ctx.fillRect(x + 2, yTop + 6, 1, 26);
-        ctx.fillRect(x + 13, yTop + 6, 1, 26);
+        ctx.fillRect(x + 2, panelTop, 1, panelH);
+        ctx.fillRect(x + 13, panelTop, 1, panelH);
       }
 
       // 開け始めのダウン判定中フラッシュ縁取り
       if ((tile & 0x80) === 0 && (tile & 0x70) === 0x60 && ((frame >> 1) & 1) === 0) {
         ctx.fillStyle = (tile & 0x08) ? "rgba(255, 110, 60, 0.35)" : "rgba(140, 245, 255, 0.35)";
-        ctx.fillRect(x + 2 + panelW, yTop + 6, 12 - panelW * 2, 26);
+        ctx.fillRect(x + 2 + panelW, panelTop, 12 - panelW * 2, panelH);
       }
 
       // 左右両開きの自動ドアパネル
@@ -678,25 +685,26 @@
         const rx = x + 14 - panelW;
 
         ctx.fillStyle = "#3c8c8c";
-        ctx.fillRect(lx, yTop + 6, panelW, 26);
-        ctx.fillRect(rx, yTop + 6, panelW, 26);
+        ctx.fillRect(lx, panelTop, panelW, panelH);
+        ctx.fillRect(rx, panelTop, panelW, panelH);
 
         ctx.fillStyle = "#68c8c4";
-        ctx.fillRect(lx, yTop + 7, Math.max(1, panelW - 1), 24);
-        ctx.fillRect(rx + 1, yTop + 7, Math.max(1, panelW - 1), 24);
+        ctx.fillRect(lx, panelTop + 1, Math.max(1, panelW - 1), panelH - 2);
+        ctx.fillRect(rx + 1, panelTop + 1, Math.max(1, panelW - 1), panelH - 2);
 
         // 扉の小窓・中央パッキン
         if (panelW >= 4) {
+          const winTop = panelTop + 3;
           ctx.fillStyle = "#162d38";
-          ctx.fillRect(lx + 1, yTop + 10, panelW - 2, 7);
-          ctx.fillRect(rx + 1, yTop + 10, panelW - 2, 7);
+          ctx.fillRect(lx + 1, winTop, panelW - 2, 6);
+          ctx.fillRect(rx + 1, winTop, panelW - 2, 6);
           ctx.fillStyle = "#a8f0f0";
-          ctx.fillRect(lx + 1, yTop + 10, 1, 2);
-          ctx.fillRect(rx + 1, yTop + 10, 1, 2);
+          ctx.fillRect(lx + 1, winTop, 1, 2);
+          ctx.fillRect(rx + 1, winTop, 1, 2);
         }
         ctx.fillStyle = "#1c3c40";
-        ctx.fillRect(lx + panelW - 1, yTop + 6, 1, 26);
-        ctx.fillRect(rx, yTop + 6, 1, 26);
+        ctx.fillRect(lx + panelW - 1, panelTop, 1, panelH);
+        ctx.fillRect(rx, panelTop, 1, panelH);
       }
     },
 
