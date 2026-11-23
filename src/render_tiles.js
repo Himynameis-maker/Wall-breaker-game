@@ -210,9 +210,7 @@
         lampColor = "#48f078";
       }
 
-      // 外枠・自動ドア上部センサーレール
-      ctx.fillStyle = "#1f4246";
-      ctx.fillRect(x + 1, yTop + 3, 14, 29);
+      // 外枠・自動ドア上部センサーレール（開いた開口部は塗りつぶさず透過くり抜き）
       ctx.fillStyle = "#3c8084";
       ctx.fillRect(x + 1, yTop + 3, 14, 3);
       ctx.fillRect(x + 1, yTop + 6, 1, 26);
@@ -224,9 +222,7 @@
       ctx.fillStyle = lampColor;
       ctx.fillRect(x + 7, yTop + 4, 2, 1);
 
-      // 奥側の暗い出入口空間
-      ctx.fillStyle = "#04060c";
-      ctx.fillRect(x + 2, yTop + 6, 12, 26);
+      // 全開時の枠内側の戸袋影（中央 x+3..x+12 はくり抜きで奥が見える）
       if (panelW === 0) {
         ctx.fillStyle = "#0e1a26";
         ctx.fillRect(x + 2, yTop + 6, 1, 26);

@@ -89,6 +89,7 @@
       this.mario = new Actor(true);
       this.mario.walkFrames = 0;
       this.spike = new Actor(false);
+      this.spike.walkFrames = 0;
       this.spikeAI = new SpikeAI();
       this.enemies = [];
       this.enemyAI = typeof EnemyAI === "function" ? new EnemyAI() : null;
@@ -1050,6 +1051,11 @@
         }
         this.updateSpikeHammer();
         this.stepper.step(this.spike, this);
+        if (this.spike.state === 1) {
+          this.spike.walkFrames = (this.spike.walkFrames || 0) + 1;
+        } else {
+          this.spike.walkFrames = 0;
+        }
         if (this.enemyAI && this.enemies.length > 0) {
           this.enemyAI.updateAll(this);
         }

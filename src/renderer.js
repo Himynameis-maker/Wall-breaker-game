@@ -45,7 +45,7 @@
     A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
     B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
     C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
-    D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+    D: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
     E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
     F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
     G: ["01111", "10000", "10000", "10111", "10001", "10001", "01110"],
@@ -433,6 +433,31 @@
       ctx.save();
       ctx.translate(0, -camOffset);
 
+      // 左右端ループゾーンの目印（ごく薄いガイド線）
+      ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
+      ctx.fillRect(0, 6, 1, Math.max(0, world.rows * 32 - 6));
+      ctx.fillRect(w - 1, 6, 1, Math.max(0, world.rows * 32 - 6));
+
+      // 抜けた穴の背景影（裏側キャラより奥に描き、穴落ち中の体が隠れないようにする）
+      ctx.fillStyle = "#0d1222";
+      for (let row = 0; row < world.rows - 1; row++) {
+        const floorY = (row + 1) * 32;
+        for (let col = 0; col < world.cols; col++) {
+          const tile = world.getTile(row, col);
+          if (isHoleTile(tile) || tile === TILE.HOLE_FALLING) {
+            ctx.fillRect(col * 16, floorY, 16, 6);
+          }
+        }
+      }
+
+      // 裏側キャラ層（親方 ＋ 裏ザコ敵：金網・床・扉・ハシゴ・鉄柱・ドラム缶の奥側に描画）
+      this.drawActor(world.spike, this.spikeSprites, w, world);
+      if (world.enemies) {
+        for (const enemy of world.enemies) {
+          if (enemy.isBack) this.drawEnemy(enemy, w, world);
+        }
+      }
+
       // 画面端2マス（左右合計4マス）の背景金網グラフィック（明るめグレー）
       if (world.cols > EDGE_SAFE_COLS * 2 && this.wireFencePattern) {
         const edgeW = EDGE_SAFE_COLS * 16;
@@ -446,11 +471,6 @@
         ctx.fillRect(0, fenceTop, edgeW, fenceH);
         ctx.restore();
       }
-
-      // 左右端ループゾーンの目印（ごく薄いガイド線）
-      ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
-      ctx.fillRect(0, 6, 1, Math.max(0, world.rows * 32 - 6));
-      ctx.fillRect(w - 1, 6, 1, Math.max(0, world.rows * 32 - 6));
 
       // 画面外の天井（平べったい青屋根）と画面外の床（小さい正方形の青ブロック）
       this.drawRoof(ctx, w);
@@ -482,10 +502,6 @@
           const x = col * 16;
 
           if (!isBottomRow && (isHoleTile(tile) || tile === TILE.HOLE_FALLING || isContLad)) {
-            if (isHoleTile(tile) || tile === TILE.HOLE_FALLING) {
-              ctx.fillStyle = "#0d1222";
-              ctx.fillRect(x, floorY, 16, 6);
-            }
             continue;
           }
           if (isEdgeSafeCol(col, world.cols)) {
@@ -538,11 +554,8 @@
         }
       }
 
-      this.drawActor(world.spike, this.spikeSprites, w, world);
+      // 表側キャラ層（表ザコ敵 → プレイヤー → 火の玉）
       if (world.enemies) {
-        for (const enemy of world.enemies) {
-          if (enemy.isBack) this.drawEnemy(enemy, w, world);
-        }
         for (const enemy of world.enemies) {
           if (!enemy.isBack) this.drawEnemy(enemy, w, world);
         }

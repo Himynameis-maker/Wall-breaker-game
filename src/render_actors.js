@@ -30,6 +30,9 @@
       if (typeof this.initPlayerSprites === "function") {
         this.initPlayerSprites();
       }
+      if (typeof this.initSpikeSprites === "function") {
+        this.initSpikeSprites();
+      }
       if (S.PALETTE_WORKER && S.PLAYER_IDLE && typeof makeSpriteSet === "function") {
         this.marioSprites = makeSpriteSet(
           {
@@ -257,6 +260,10 @@
     drawActor(slot, sprites, worldWidth, world) {
       if (slot.isMario && typeof this.drawPlayer === "function") {
         this.drawPlayer(slot, worldWidth, world);
+        return;
+      }
+      if (!slot.isMario && typeof this.drawSpike === "function") {
+        this.drawSpike(slot, worldWidth, world);
         return;
       }
       const drawY = slot.y - 26 + this.getLadderVisualOffsetY(slot);
