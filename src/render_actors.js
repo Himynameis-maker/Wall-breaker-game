@@ -33,6 +33,9 @@
       if (typeof this.initSpikeSprites === "function") {
         this.initSpikeSprites();
       }
+      if (typeof this.initSpanagonSprites === "function") {
+        this.initSpanagonSprites();
+      }
       if (S.PALETTE_WORKER && S.PLAYER_IDLE && typeof makeSpriteSet === "function") {
         this.marioSprites = makeSpriteSet(
           {
