@@ -403,6 +403,10 @@
     // $CEB6 相当: はしごマス中央踏破時の進入判定
     tryEnemyLadder(slot, world) {
       const curTile = world.getTile(slot.row, slot.col);
+      if (isFallHoleTile(curTile)) {
+        slot.avail = 0;
+        return false;
+      }
       const canUp = isLadderTile(curTile);
       const belowTile = slot.row < world.rows - 1 ? world.getTile(slot.row + 1, slot.col) : TILE.EMPTY;
       const canDown = slot.row < world.rows - 1 && isLadderTile(belowTile);
@@ -610,7 +614,7 @@
       if ((slot.cmd & UP) === 0 && slot.prom >= 4) {
         const ladderRow = Math.max(0, Math.min(world.rows - 1, Math.floor(slot.topY / 32)));
         const ladderTile = world.getTile(ladderRow, slot.col);
-        if (!isLadderTile(ladderTile) && ladderTile !== TILE.HOLE_PILLAR_LAD) {
+        if (!isLadderTile(ladderTile)) {
           slot.cmd = (slot.cmd & ~(UP | DOWN)) | 0x80; // bit2=0 なので上り扱い
           slot.dir = UP;
         }
