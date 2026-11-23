@@ -36,7 +36,7 @@
   const MAX_ENEMIES = 7;
 
   const EDITOR_TOOLS = [
-    { id: "erase", label: "消しゴム", group: "terrain", kind: "erase", desc: "マス上のモノ・ザコ敵を消します" },
+    { id: "erase", label: "床 (消す)", group: "terrain", kind: "erase", desc: "穴を埋めて床に戻し、置いたモノ・親方・敵を消します" },
     { id: "wall1", label: "1回壁(木箱)", group: "wall", kind: "tile", tile: TILE.WALL_1, desc: "1回叩くと壊れる壁（クリア対象）" },
     { id: "wall2", label: "2回壁(銀)", group: "wall", kind: "tile", tile: TILE.WALL_2, desc: "2回叩くと壊れる壁（クリア対象）" },
     { id: "wall3", label: "3回壁(黒)", group: "wall", kind: "tile", tile: TILE.WALL_3, desc: "3回叩くと壊れる壁（クリア対象）" },
@@ -44,13 +44,13 @@
     { id: "breakLadder", label: "壊れハシゴ", group: "terrain", kind: "tile", tile: TILE.BREAK_LADDER, desc: "叩くと崩れるハシゴ（クリア対象）" },
     { id: "sandLadder", label: "砂嵐ハシゴ", group: "terrain", kind: "tile", tile: TILE.SAND_LADDER, desc: "敵だけ使える・主人公は掴めず落ちるハシゴ" },
     { id: "drum", label: "ドラム缶", group: "terrain", kind: "tile", tile: TILE.DRUM, desc: "通れない・上に乗れる・鉄柱で落ちる" },
-    { id: "hole", label: "穴", group: "terrain", kind: "tile", tile: TILE.HOLE, desc: "足場のない落とし穴" },
+    { id: "hole", label: "穴", group: "terrain", kind: "tile", tile: TILE.HOLE, desc: "足場のない落とし穴（一番下の段以外）" },
     { id: "bomb", label: "爆弾", group: "wall", kind: "tile", tile: TILE.BOMB, desc: "左右へ連鎖爆発・ドア全開" },
     { id: "timedBomb", label: "時限爆弾", group: "wall", kind: "tile", tile: TILE.TIMED_BOMB, desc: "設定秒数で爆発（叩き無効）" },
     { id: "door", label: "自動ドア", group: "wall", kind: "tile", tile: TILE.DOOR, desc: "叩くと開く（敵が裏側へ出入り）" },
-    { id: "pillar", label: "鉄柱", group: "wall", kind: "tile", tile: TILE.PILLAR, desc: "叩くと真上1マス分が下へ落下" },
+    { id: "pillar", label: "鉄柱", group: "wall", kind: "tile", tile: TILE.PILLAR, desc: "叩くと真上1マス分が落下（縦2連続は不可）" },
     { id: "mario", label: "主人公", group: "actor", kind: "actor", desc: "主人公の開始位置（再タップで向き反転）" },
-    { id: "spike", label: "親方ロボ", group: "actor", kind: "actor", desc: "親方の開始位置（再タップで向き反転）" },
+    { id: "spike", label: "親方ロボ", group: "actor", kind: "actor", desc: "親方を配置（再タップで向き反転 / 床で消去）" },
     { id: "spanagon", label: "黄ロボ", group: "actor", kind: "enemy", enemyType: "spanagon", desc: "主人公を追う標準ロボ（再タップで向き反転）" },
     { id: "spanagonFast", label: "赤高速ロボ", group: "actor", kind: "enemy", enemyType: "spanagonFast", desc: "少し速く追う危険ロボ（再タップで向き反転）" },
     { id: "eggplant", label: "緑四つ足", group: "actor", kind: "enemy", enemyType: "eggplant", desc: "高速直進・ハシゴ好きロボ（再タップで向き反転）" }
@@ -98,7 +98,9 @@
       tiles: (data.tiles || []).map(t => ({ row: t.row, col: t.col, tile: t.tile })),
       timedBombs: (data.timedBombs || []).map(tb => ({ row: tb.row, col: tb.col, sec: tb.sec })),
       mario: { row: data.mario.row, col: data.mario.col, dir: data.mario.dir },
-      spike: { row: data.spike.row, col: data.spike.col, dir: data.spike.dir },
+      spike: data.spike
+        ? { row: data.spike.row, col: data.spike.col, dir: data.spike.dir }
+        : null,
       enemies: (data.enemies || []).map(e => ({
         enemyType: e.enemyType,
         row: e.row,
@@ -115,7 +117,7 @@
 
   function hasActorAt(data, row, col) {
     if (data.mario.row === row && data.mario.col === col) return true;
-    if (data.spike.row === row && data.spike.col === col) return true;
+    if (data.spike && data.spike.row === row && data.spike.col === col) return true;
     for (let i = 0; i < data.enemies.length; i++) {
       if (data.enemies[i].row === row && data.enemies[i].col === col) return true;
     }
@@ -169,6 +171,7 @@
         if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
         if (isEdgeSafeCol(c, cols)) continue;
         if (!Number.isFinite(t) || t === TILE.EMPTY) continue;
+        if (t === TILE.HOLE && r >= rows - 1) continue;
         tileMap.set(keyOf(r, c), { row: r, col: c, tile: t });
       }
     }
@@ -222,8 +225,6 @@
     }
 
     base.mario = parseActorPos(raw.mario, base.mario, RIGHT);
-    base.spike = parseActorPos(raw.spike, base.spike, LEFT);
-
     if (drumSet.has(keyOf(base.mario.row, base.mario.col))) {
       const free = findNearestFreeCell(base, base.mario.row, base.mario.col, drumSet);
       if (free) {
@@ -231,11 +232,17 @@
         base.mario.col = free.col;
       }
     }
-    if (drumSet.has(keyOf(base.spike.row, base.spike.col))) {
-      const free = findNearestFreeCell(base, base.spike.row, base.spike.col, drumSet);
-      if (free) {
-        base.spike.row = free.row;
-        base.spike.col = free.col;
+
+    if (raw.spike === null || raw.spike === false || raw.hasSpike === false) {
+      base.spike = null;
+    } else {
+      base.spike = parseActorPos(raw.spike, base.spike, LEFT);
+      if (drumSet.has(keyOf(base.spike.row, base.spike.col))) {
+        const free = findNearestFreeCell(base, base.spike.row, base.spike.col, drumSet);
+        if (free) {
+          base.spike.row = free.row;
+          base.spike.col = free.col;
+        }
       }
     }
 
@@ -315,8 +322,18 @@
       }
       return { ok: false, changed: false, message: "両端2列は通路専用のため置けません" };
     }
+    if (tileVal === TILE.HOLE && row >= data.rows - 1) {
+      return { ok: false, changed: false, message: "一番下の段には穴を作れません" };
+    }
     if (tileVal === TILE.DRUM && hasActorAt(data, row, col)) {
       return { ok: false, changed: false, message: "キャラがいるマスにはドラム缶を置けません" };
+    }
+    if (tileVal === TILE.PILLAR) {
+      const aboveIsPillar = row > 0 && getTileAt(data, row - 1, col) === TILE.PILLAR;
+      const belowIsPillar = row < data.rows - 1 && getTileAt(data, row + 1, col) === TILE.PILLAR;
+      if (aboveIsPillar || belowIsPillar) {
+        return { ok: false, changed: false, message: "鉄柱は縦に2つ連続して置けません" };
+      }
     }
 
     const validSec = normalizeTimedSec(timedSec);
@@ -381,11 +398,17 @@
 
     if (tool.kind === "erase") {
       const removedEnemy = removeEnemyAt(data, row, col);
+      let removedSpike = false;
+      if (data.spike && data.spike.row === row && data.spike.col === col) {
+        data.spike = null;
+        removedSpike = true;
+      }
       const tileRes = setTileAt(data, row, col, TILE.EMPTY, timedSec);
+      const anyChanged = removedEnemy || removedSpike || tileRes.changed;
       return {
         ok: true,
-        changed: removedEnemy || tileRes.changed,
-        message: (removedEnemy || tileRes.changed) ? "消去しました" : ""
+        changed: anyChanged,
+        message: anyChanged ? "床（消去）を適用しました" : ""
       };
     }
 
@@ -411,7 +434,7 @@
     }
 
     if (tool.id === "spike") {
-      if (data.spike.row === row && data.spike.col === col) {
+      if (data.spike && data.spike.row === row && data.spike.col === col) {
         data.spike.dir = data.spike.dir === RIGHT ? LEFT : RIGHT;
         return { ok: true, changed: true, message: "親方の向きを反転しました" };
       }
@@ -464,11 +487,11 @@
         y: (data.mario.row + 1) * 32,
         dir: data.mario.dir
       },
-      spike: {
+      spike: data.spike ? {
         x: data.spike.col * 16,
         y: (data.spike.row + 1) * 32,
         dir: data.spike.dir
-      }
+      } : null
     };
     if (data.timedBombs.length > 0) {
       cfg.timedBombs = data.timedBombs.map(tb => ({ row: tb.row, col: tb.col, sec: tb.sec }));
@@ -540,7 +563,9 @@
       lines.push("      ],");
     }
     lines.push("      mario: { x: " + (data.mario.col * 16) + ", y: " + ((data.mario.row + 1) * 32) + ", dir: " + (data.mario.dir === LEFT ? "LEFT" : "RIGHT") + " },");
-    const spikeLine = "      spike: { x: " + (data.spike.col * 16) + ", y: " + ((data.spike.row + 1) * 32) + ", dir: " + (data.spike.dir === LEFT ? "LEFT" : "RIGHT") + " }";
+    const spikeLine = data.spike
+      ? ("      spike: { x: " + (data.spike.col * 16) + ", y: " + ((data.spike.row + 1) * 32) + ", dir: " + (data.spike.dir === LEFT ? "LEFT" : "RIGHT") + " }")
+      : "      spike: null";
     const hasEnemies = data.enemies.length > 0;
     const hasFireballOpt = data.fireballMode !== "normal";
     lines.push(spikeLine + ((hasEnemies || hasFireballOpt) ? "," : ""));
@@ -600,6 +625,18 @@
     }
   }
 
+  function drawOutlinedText(ctx, text, x, y, color) {
+    ctx.font = "bold 7px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(4, 6, 14, 0.95)";
+    ctx.lineWidth = 2.4;
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
   function drawEditorOverlay(ctx, data, state = {}) {
     const cols = data.cols;
     const rows = data.rows;
@@ -642,41 +679,32 @@
     }
     ctx.stroke();
 
-    // 時限爆弾の秒数バッジ
+    // 時限爆弾の秒数ラベル（上の床に重ならない y+23 付近にフチ付きで表示）
     if (data.timedBombs.length > 0) {
-      ctx.font = "bold 7px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
       for (let i = 0; i < data.timedBombs.length; i++) {
         const tb = data.timedBombs[i];
-        const x = tb.col * 16 + 8;
-        const y = tb.row * 32 + 1;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-        ctx.fillRect(x - 6, y, 12, 8);
-        ctx.fillStyle = "#ffe066";
-        ctx.fillText(String(tb.sec), x, y + 1);
+        drawOutlinedText(ctx, String(tb.sec), tb.col * 16 + 8, tb.row * 32 + 23, "#ffe066");
       }
     }
 
-    // キャラの位置＆向きマーカー
+    // キャラの位置＆向きマーカー（上の床 y+0..5 を絶対隠さないよう y+7 以降のみ描画）
     function drawActorBadge(row, col, dir, tag, color) {
       const x = col * 16;
       const y = row * 32;
+      ctx.save();
+      ctx.globalAlpha = 0.68;
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.strokeRect(x + 0.5, y + 6.5, 15, 25);
+      ctx.restore();
 
       const label = tag + (dir === LEFT ? "←" : "→");
-      ctx.font = "bold 7px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      ctx.fillStyle = "rgba(8, 12, 22, 0.86)";
-      ctx.fillRect(x, y, 16, 8);
-      ctx.fillStyle = color;
-      ctx.fillText(label, x + 8, y + 1);
+      drawOutlinedText(ctx, label, x + 8, y + 7, color);
     }
 
-    drawActorBadge(data.spike.row, data.spike.col, data.spike.dir, "親", "#ff8e80");
+    if (data.spike) {
+      drawActorBadge(data.spike.row, data.spike.col, data.spike.dir, "親", "#ff8e80");
+    }
     for (let i = 0; i < data.enemies.length; i++) {
       const e = data.enemies[i];
       const tag = e.enemyType === "eggplant" ? "緑" : (e.enemyType === "spanagonFast" ? "赤" : "黄");
@@ -694,7 +722,7 @@
         ? "rgba(255, 150, 80, 0.9)"
         : "rgba(120, 235, 255, 0.95)";
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(hx + 1, hy + 1, 14, 30);
+      ctx.strokeRect(hx + 1, hy + 6, 14, 25);
     }
 
     ctx.restore();
