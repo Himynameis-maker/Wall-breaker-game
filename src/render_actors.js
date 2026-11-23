@@ -264,6 +264,8 @@
     },
 
     drawActor(slot, sprites, worldWidth, world) {
+
+  if (!slot) return;
       if (slot.isMario && typeof this.drawPlayer === "function") {
         this.drawPlayer(slot, worldWidth, world);
         return;
