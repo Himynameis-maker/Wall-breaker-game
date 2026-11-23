@@ -742,30 +742,60 @@
     },
 
     drawBomb(ctx, x, yTop, frame) {
-      // 導火線と点滅火花
-      ctx.fillStyle = "#c89048";
+      // 導火線と点滅火花（形と幅を維持しつつ明るく見やすく）
+      ctx.fillStyle = "#d89c48";
       ctx.fillRect(x + 7, yTop + 9, 2, 4);
+      ctx.fillStyle = "#f4ca78";
+      ctx.fillRect(x + 7, yTop + 9, 1, 4);
+
       const sparkOn = ((frame >> 2) & 1) === 0;
-      ctx.fillStyle = sparkOn ? "#ffec48" : "#ff5020";
+      ctx.fillStyle = sparkOn ? "#fff058" : "#ff5820";
       ctx.fillRect(x + 8, yTop + 6, 3, 3);
-      ctx.fillStyle = sparkOn ? "#ffffff" : "#ffa830";
+      ctx.fillStyle = sparkOn ? "#ffffff" : "#ffb838";
       ctx.fillRect(x + 9, yTop + 7, 1, 1);
 
-      // 口金
-      ctx.fillStyle = "#687080";
+      // 口金（明るい真鍮色で輪郭くっきり）
+      ctx.fillStyle = "#b88230";
       ctx.fillRect(x + 5, yTop + 13, 6, 2);
+      ctx.fillStyle = "#ffe084";
+      ctx.fillRect(x + 5, yTop + 13, 4, 1);
+      ctx.fillStyle = "#7a521c";
+      ctx.fillRect(x + 9, yTop + 14, 2, 1);
 
-      // 爆弾本体（丸型ドット）
-      ctx.fillStyle = "#1c2234";
+      // 爆弾本体（元の丸型シルエット・幅そのまま、暗背景から浮かぶ青鉄色）
+      ctx.fillStyle = "#4c5c7a";
       ctx.fillRect(x + 3, yTop + 15, 10, 15);
       ctx.fillRect(x + 2, yTop + 17, 12, 11);
-      ctx.fillStyle = "#323c58";
-      ctx.fillRect(x + 4, yTop + 16, 7, 12);
-      // ハイライト & 危険マーク
-      ctx.fillStyle = "#8ca4d8";
-      ctx.fillRect(x + 4, yTop + 18, 2, 3);
-      ctx.fillStyle = "#e83828";
+
+      // 内側の丸い金属球体グラデーション
+      ctx.fillStyle = "#627696";
+      ctx.fillRect(x + 3, yTop + 16, 9, 12);
+      ctx.fillRect(x + 4, yTop + 16, 7, 13);
+
+      // 光が当たる左上〜中央の明面
+      ctx.fillStyle = "#869ec4";
+      ctx.fillRect(x + 4, yTop + 17, 6, 7);
+      ctx.fillRect(x + 4, yTop + 16, 5, 6);
+
+      // 左上外周の明るいリムハイライト
+      ctx.fillStyle = "#9ab2d6";
+      ctx.fillRect(x + 3, yTop + 15, 2, 1);
+      ctx.fillRect(x + 3, yTop + 16, 1, 1);
+      ctx.fillRect(x + 2, yTop + 17, 1, 8);
+
+      // ツヤの白銀ハイライト
+      ctx.fillStyle = "#e6f2ff";
+      ctx.fillRect(x + 4, yTop + 17, 3, 3);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x + 4, yTop + 18, 2, 1);
+      ctx.fillRect(x + 5, yTop + 17, 1, 1);
+
+      // 危険・爆発マーク（見やすい赤＋黄芯）
+      ctx.fillStyle = "#ff3828";
+      ctx.fillRect(x + 8, yTop + 20, 1, 1);
       ctx.fillRect(x + 7, yTop + 21, 3, 4);
+      ctx.fillStyle = "#ffe458";
+      ctx.fillRect(x + 8, yTop + 22, 1, 2);
     },
 
     drawTimedBomb(ctx, x, yTop, tb, frame) {
