@@ -56,6 +56,92 @@
     [[0, -1], [-1, -2], [-1, -3], [-2, -4]]
   ];
 
+  // 2回壊せる壁（ステンレスパネル）用パレット・ドット絵（16×24）
+  const STAINLESS_PALETTE = {
+    W: "#f2f8ff",
+    H: "#dcebf7",
+    L: "#b8cde0",
+    M: "#92a9c2",
+    S: "#687f98",
+    D: "#42546a",
+    K: "#202a38",
+    B: "#101620",
+    I: "#4d5b6e",
+    R: "#6e564a"
+  };
+
+  const STAINLESS_WALL_FULL = [
+    ".SWWWWWWWWWWWWS.",
+    "DWHHHHHHHHHHHHSK",
+    "DHDDDDDDDDDDDDSK",
+    "DHMDMMMMLLHWDMSK",
+    "DHMMMMMLLHWLMMSK",
+    "DHMMMMLLHWLMMMSK",
+    "DHMMMLLHWLMMMMSK",
+    "DHMMLDDDDDDMMMSK",
+    "DHMLHHHHHHHMMMSK",
+    "DHLHLMMMMMMMMMSK",
+    "DHMDMMMMMMMMDMSK",
+    "DHSSSSSSSSSSSSSK",
+    "DDDDLLDDDDLLDDSK",
+    "DWHHHHHHHHHHHHSK",
+    "DHDDDDDDDDDDDDSK",
+    "DHMDMMMMLLHWDMSK",
+    "DHMMMMMLLHWLMMSK",
+    "DHMMMMLLHWLMMMSK",
+    "DHMMMDDDDDDMMMSK",
+    "DHMLHHHHHHHMMMSK",
+    "DHMDMMMMMMMMDMSK",
+    "DHSSSSSSSSSSSSSK",
+    "DSSSSSSSSSSSSSDK",
+    "KDDDDDDDDDDDDDKK"
+  ];
+
+  const STAINLESS_WALL_DAMAGED = [
+    ".SWWWWWWWWS.....",
+    "DWHHHHHHHWBBK...",
+    "DHDDDDWWBBIBBK..",
+    "DHMDMWBBBRIBBWSK",
+    "DHMMMWBBIIBBHLSK",
+    "DHMMBBBRBBWLMMSK",
+    "DHMWBBBDWWLMMMSK",
+    "DHWBBWDDDDMMBWSK",
+    ".DWBWLLHHHBBWMSK",
+    ".BBWMMMLLBBLMMSK",
+    "DDBBMDMMBBLMMDSK",
+    "DHSSBBBWBBSSSSSK",
+    "DDDDWBBIBBLLDDSK",
+    "DWHHBBWIBBHHHHWK",
+    "DHDDDBBWWBBDDDSK",
+    "DHMDMWBBMWBBWDSK",
+    "DHMMWBBMMMWBBWSK",
+    "DHMWBBMMLLWWBBK.",
+    "DHWBBDDDDDDWWBB.",
+    "DHBBHHHHHHHHWBK.",
+    "DHBWDMMMMMMMWB..",
+    "DHSSSMMMMMMBBS..",
+    "DSSSDDDDDSSBBK..",
+    "KDDDDDDDDDKBK..."
+  ];
+
+  function bakeTile16x24(rows, palette) {
+    const c = document.createElement("canvas");
+    c.width = 16;
+    c.height = 24;
+    const g = c.getContext("2d");
+    for (let y = 0; y < 24; y++) {
+      const line = rows[y] || "";
+      for (let x = 0; x < 16; x++) {
+        const ch = line[x];
+        const color = palette[ch];
+        if (!color) continue;
+        g.fillStyle = color;
+        g.fillRect(x, y, 1, 1);
+      }
+    }
+    return c;
+  }
+
   const R = root.WreckRender;
   if (!R || !R.Renderer) return;
 
@@ -246,6 +332,17 @@
       } else if (hp <= 1) {
         this.drawServerCracks(ctx, x, yTop, 2);
       }
+    },
+
+    drawStainlessWall(ctx, x, yTop, hp) {
+      if (!this.stainlessWallSprites) {
+        this.stainlessWallSprites = {
+          full: bakeTile16x24(STAINLESS_WALL_FULL, STAINLESS_PALETTE),
+          damaged: bakeTile16x24(STAINLESS_WALL_DAMAGED, STAINLESS_PALETTE)
+        };
+      }
+      const img = hp <= 1 ? this.stainlessWallSprites.damaged : this.stainlessWallSprites.full;
+      ctx.drawImage(img, x, yTop + 8);
     },
 
     drawCrateRackWall(ctx, x, yTop) {
@@ -634,18 +731,8 @@
         // 1回壊せる壁（木箱の中身剥き出しラック）
         this.drawCrateRackWall(ctx, x, yTop);
       } else if (group === 0x10) {
-        // 2回壊せる壁（硬質ブロンズ/橙パネル）
-        ctx.fillStyle = "#5a4220";
-        ctx.fillRect(x + 1, yTop + 3, 14, 29);
-        ctx.fillStyle = "#d08c30";
-        ctx.fillRect(x + 2, yTop + 4, 12, 12);
-        ctx.fillRect(x + 2, yTop + 18, 12, 12);
-        ctx.fillStyle = "#f0b858";
-        ctx.fillRect(x + 3, yTop + 5, 10, 2);
-        ctx.fillRect(x + 3, yTop + 19, 10, 2);
-        if (hp === 1) {
-          this.drawCracks(ctx, x, yTop, 1);
-        }
+        // 2回壊せる壁（ステンレスパネル壁）
+        this.drawStainlessWall(ctx, x, yTop, hp);
       } else {
         // 3回壊せる壁（サーバー本体・シルバーケース）
         this.drawServerWall(ctx, x, yTop, hp, frame);
