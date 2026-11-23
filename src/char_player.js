@@ -780,20 +780,7 @@
         return;
       }
 
-      if (slot.state === 15 || slot.state === 16) {
-        const img = sprites["idle_" + facing];
-        if (!img) return;
-        const f = world ? world.f : 0;
-        const phase = (f >> 2) & 1;
-        const bobY = slot.state === 15 ? 4 : (phase ? -3 : -2);
-        ctx.drawImage(img, 0, 0, 16, 9, baseX, baseDrawY + bobY, 16, 9);
-        ctx.fillStyle = "#ea7224";
-        ctx.fillRect(baseX + 1, baseDrawY + bobY + (phase ? 5 : 7), 2, 2);
-        ctx.fillRect(baseX + 13, baseDrawY + bobY + (phase ? 7 : 5), 2, 2);
-        if (slot.state === 16) {
-          ctx.fillStyle = phase ? "#ffec48" : "#ffffff";
-          ctx.fillRect(baseX + 7, baseDrawY - 6, 2, 2);
-        }
+if (slot.state === 15 || slot.state === 16) {
         return;
       }
 
