@@ -76,6 +76,10 @@
       this.deathVy = 0;
       this.deathBottomY = 0;
       this.deathFinished = false;
+      this.stageCleared = false;
+      this.clearPhase = 0; // 0:通常, 1:壊しきり後0.6s動作中(無敵), 2:全員停止＆3.0s待機
+      this.clearTimer = 0;
+      this.clearFinished = false;
       this.allBackStop = false;
       this.allBackTimer = 0;
       this.allBackDone = false;
@@ -924,7 +928,7 @@
     }
 
     startMarioDeath() {
-      if (this.marioDead) return;
+      if (this.marioDead || this.stageCleared) return;
       this.marioDead = true;
       this.deathPhase = 1;
       this.deathTimer = 0;
@@ -969,6 +973,20 @@
           this.deathFinished = true;
         }
       }
+    }
+
+    isStageClearConditionMet() {
+      return this.countBreakables() === 0 && this.crumblingLadders.size === 0;
+    }
+
+    startStageClear() {
+      if (this.stageCleared || this.marioDead) return;
+      this.stageCleared = true;
+      this.clearPhase = 1;
+      this.clearTimer = 0;
+      this.clearFinished = false;
+      this.marioHitEnemy = false;
+      this.marioHitFireball = false;
     }
 
     // ROM $D50B〜$D57E + $D58A 準拠: 同陣営ザコ敵同士（表同士・裏同士）の接触判定
@@ -1086,6 +1104,14 @@
         return;
       }
 
+      if (this.clearPhase === 2) {
+        this.clearTimer += 1;
+        if (this.clearTimer >= 180) {
+          this.clearFinished = true;
+        }
+        return;
+      }
+
       if (this.startBannerTimer > 0) {
         this.startBannerTimer -= 1;
       }
@@ -1101,6 +1127,9 @@
         this.mario.walkFrames = (this.mario.walkFrames || 0) + 1;
       } else {
         this.mario.walkFrames = 0;
+      }
+      if (!this.stageCleared && this.isStageClearConditionMet()) {
+        this.startStageClear();
       }
 
       if (!this.allBackStop) {
@@ -1122,6 +1151,28 @@
       }
 
       this.updateEffectsAndWaves();
+
+      if (!this.stageCleared && this.isStageClearConditionMet()) {
+        this.startStageClear();
+      }
+
+      if (this.stageCleared) {
+        this.marioHitEnemy = false;
+        this.marioHitFireball = false;
+        if (this.clearPhase === 1) {
+          this.clearTimer += 1;
+          if (this.clearTimer >= 36) {
+            this.clearPhase = 2;
+            this.clearTimer = 0;
+            this.startBannerTimer = 0;
+            // 将来ここでクリアファンファーレを再生
+            return;
+          }
+        }
+        this.f += 1;
+        return;
+      }
+
       this.updateMarioEnemyHit();
       if (this.marioHitEnemy) {
         this.startMarioDeath();
