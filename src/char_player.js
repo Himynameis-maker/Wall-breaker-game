@@ -774,8 +774,7 @@
       const facing = (faceVal & LEFT) ? "L" : "R";
 
       if (world && world.marioDead) {
-        const poseKey = world.deathPhase === 1 ? "deadLook_R" : "deadFall_R";
-        const img = sprites[poseKey] || sprites["idle_" + facing];
+       const img = sprites.deadFall_R || sprites["idle_" + facing];
         if (!img) return;
         ctx.drawImage(img, baseX, baseDrawY);
         return;
