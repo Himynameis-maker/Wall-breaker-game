@@ -41,6 +41,14 @@
   const INTRO_START_CAM_Y = -122;
   const INTRO_GROUND_OVERSHOOT = 64;
 
+  const SPACE_STAR_THEMES = [
+    { core: "#ffffff", mid: "#a8dcff", outer: "#486eb8" }, // 青白恒星
+    { core: "#f4ffff", mid: "#80e2ff", outer: "#386da4" }, // シアン星
+    { core: "#fff6ff", mid: "#d49eff", outer: "#64449c" }, // 星雲バイオレット
+    { core: "#fffcf0", mid: "#ffe08c", outer: "#946c38" }, // 淡ゴールド恒星
+    { core: "#fff2f6", mid: "#ffa4be", outer: "#883e5c" }  // 淡ローズ星
+  ];
+
   const PIXEL_FONT = {
     A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
     B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
@@ -120,6 +128,8 @@
       this.camY = 0;
       this.isIntroCamMoving = false;
       this.bannerCache = new Map();
+      this.spaceGradient = null;
+      this.spaceFieldCache = new Map();
 
       this.marioSprites = {};
       this.spikeSprites = {};
@@ -128,6 +138,263 @@
       }
       this.wireFencePattern = this.makeWireFencePattern();
       this.floorBlockPattern = this.makeFloorBlockPattern();
+    }
+
+    getSpaceField(w) {
+      const cached = this.spaceFieldCache.get(w);
+      if (cached) return cached;
+      if (this.spaceFieldCache.size > 12) {
+        this.spaceFieldCache.clear();
+      }
+
+      let seed = (0x5a17c391 ^ Math.imul(w | 0, 2654435761)) >>> 0;
+      const rand = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+
+      const stars = [];
+      const nebula = [];
+      const cols = Math.max(1, Math.floor(w / 16));
+      const bandTop = -123;
+      const rowH = 14;
+      const rows = 8; // -123 .. -12
+
+      // 遠い深宇宙の淡い星雲微粒子（斜めの銀河帯）
+      const nebulaColors = ["#384a86", "#4f3e7c", "#2d5584"];
+      for (let i = 0; i < cols * 2; i++) {
+        const nx = Math.floor(rand() * w);
+        const t = w > 1 ? nx / w : 0.5;
+        const centerY = -44 - t * 48 + Math.sin(t * Math.PI * 2.2) * 14;
+        const ny = Math.round(centerY + (rand() - 0.5) * 32);
+        if (ny < -123 || ny > -12) continue;
+        nebula.push({
+          x: nx,
+          y: ny,
+          w: rand() < 0.25 ? 2 : 1,
+          color: nebulaColors[Math.floor(rand() * nebulaColors.length)],
+          alpha: 0.14 + rand() * 0.10
+        });
+      }
+
+      // 層状配置でバランス良く宇宙の星々を配置
+      for (let r = 0; r < rows; r++) {
+        const yMin = bandTop + r * rowH;
+        const yMax = Math.min(-12, yMin + rowH - 2);
+        for (let c = 0; c < cols; c++) {
+          if (rand() > 0.44) continue;
+          const xMin = c * 16 + 2;
+          const xMax = Math.min(w - 3, xMin + 12);
+          if (xMax < xMin) continue;
+
+          const sx = xMin + Math.floor(rand() * (xMax - xMin + 1));
+          const sy = yMin + Math.floor(rand() * (yMax - yMin + 1));
+          const roll = rand();
+
+          let type = 0;
+          if (roll > 0.94 && r < rows - 1) {
+            type = 3; // 主役の輝き星（5x5までキラッと広がる）
+          } else if (roll > 0.80) {
+            type = 2; // キラキラ十字星（3x3）
+          } else if (roll > 0.58) {
+            type = 1; // 瞬き小星
+          }
+
+          const themeRoll = rand();
+          let themeIdx = 0;
+          if (themeRoll > 0.90) themeIdx = 4;
+          else if (themeRoll > 0.72) themeIdx = 3;
+          else if (themeRoll > 0.48) themeIdx = 2;
+          else if (themeRoll > 0.24) themeIdx = 1;
+
+          stars.push({
+            x: sx,
+            y: sy,
+            type,
+            theme: SPACE_STAR_THEMES[themeIdx],
+            phase: Math.floor(rand() * 256),
+            speed: type === 0
+              ? (18 + Math.floor(rand() * 16))
+              : (type === 1 ? (10 + Math.floor(rand() * 8)) : (6 + Math.floor(rand() * 4)))
+          });
+        }
+      }
+
+      const field = { stars, nebula };
+      this.spaceFieldCache.set(w, field);
+      return field;
+    }
+
+    drawSpaceSky(ctx, w, camOffset, viewH, world) {
+      if (camOffset >= 0) return;
+      const visTop = camOffset;
+      const visBottom = Math.min(0, camOffset + viewH);
+      if (visBottom <= visTop) return;
+
+      if (!this.spaceGradient) {
+        const grad = ctx.createLinearGradient(0, -126, 0, 0);
+        grad.addColorStop(0.00, "#03040a");
+        grad.addColorStop(0.26, "#080c1e");
+        grad.addColorStop(0.56, "#14173b");
+        grad.addColorStop(0.84, "#0b122a");
+        grad.addColorStop(1.00, "#080b14");
+        this.spaceGradient = grad;
+      }
+
+      ctx.save();
+      ctx.fillStyle = this.spaceGradient;
+      ctx.fillRect(0, visTop, w, visBottom - visTop);
+
+      const field = this.getSpaceField(w);
+      for (let i = 0; i < field.nebula.length; i++) {
+        const n = field.nebula[i];
+        if (n.y < visTop || n.y >= visBottom) continue;
+        ctx.globalAlpha = n.alpha;
+        ctx.fillStyle = n.color;
+        ctx.fillRect(n.x, n.y, n.w, 1);
+      }
+
+      const animFrame = (world.introFrame || 0) + (world.f || 0);
+      for (let i = 0; i < field.stars.length; i++) {
+        const s = field.stars[i];
+        if (s.y + 2 < visTop || s.y - 2 >= visBottom) continue;
+
+        const tick = Math.floor((animFrame + s.phase) / s.speed);
+        const th = s.theme;
+
+        if (s.type === 0) {
+          const step = tick & 3;
+          ctx.globalAlpha = step === 2 ? 0.85 : (step === 0 ? 0.45 : 0.65);
+          ctx.fillStyle = step === 2 ? th.mid : th.outer;
+          ctx.fillRect(s.x, s.y, 1, 1);
+        } else if (s.type === 1) {
+          const step = tick & 3;
+          if (step === 1) {
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+          } else if (step === 2) {
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+          } else {
+            ctx.globalAlpha = 0.72;
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x, s.y, 1, 1);
+          }
+        } else if (s.type === 2) {
+          const step = tick % 8;
+          if (step < 3) {
+            ctx.globalAlpha = 0.82;
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x, s.y, 1, 1);
+          } else if (step === 3 || step === 6) {
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.globalAlpha = 0.75;
+            ctx.fillStyle = th.outer;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+          } else if (step === 4) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+            ctx.globalAlpha = 0.42;
+            ctx.fillStyle = th.outer;
+            ctx.fillRect(s.x - 1, s.y - 1, 1, 1);
+            ctx.fillRect(s.x + 1, s.y - 1, 1, 1);
+            ctx.fillRect(s.x - 1, s.y + 1, 1, 1);
+            ctx.fillRect(s.x + 1, s.y + 1, 1, 1);
+          } else if (step === 5) {
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+          } else {
+            ctx.globalAlpha = 0.88;
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x, s.y, 1, 1);
+          }
+        } else {
+          const step = tick % 10;
+          if (step < 4) {
+            ctx.globalAlpha = 0.92;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.globalAlpha = 0.60;
+            ctx.fillStyle = th.outer;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+          } else if (step === 4 || step === 7) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+          } else if (step === 5) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+            ctx.globalAlpha = 0.78;
+            ctx.fillStyle = th.outer;
+            ctx.fillRect(s.x - 2, s.y, 1, 1);
+            ctx.fillRect(s.x + 2, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 2, 1, 1);
+            ctx.fillRect(s.x, s.y + 2, 1, 1);
+            ctx.globalAlpha = 0.45;
+            ctx.fillRect(s.x - 1, s.y - 1, 1, 1);
+            ctx.fillRect(s.x + 1, s.y - 1, 1, 1);
+            ctx.fillRect(s.x - 1, s.y + 1, 1, 1);
+            ctx.fillRect(s.x + 1, s.y + 1, 1, 1);
+          } else if (step === 6) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = th.core;
+            ctx.fillRect(s.x, s.y, 1, 1);
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x - 1, s.y - 1, 1, 1);
+            ctx.fillRect(s.x + 1, s.y - 1, 1, 1);
+            ctx.fillRect(s.x - 1, s.y + 1, 1, 1);
+            ctx.fillRect(s.x + 1, s.y + 1, 1, 1);
+            ctx.globalAlpha = 0.70;
+            ctx.fillStyle = th.outer;
+            ctx.fillRect(s.x - 1, s.y, 1, 1);
+            ctx.fillRect(s.x + 1, s.y, 1, 1);
+            ctx.fillRect(s.x, s.y - 1, 1, 1);
+            ctx.fillRect(s.x, s.y + 1, 1, 1);
+          } else {
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = th.mid;
+            ctx.fillRect(s.x, s.y, 1, 1);
+          }
+        }
+      }
+
+      ctx.restore();
     }
 
     makeWireFencePattern() {
@@ -432,6 +699,9 @@
 
       ctx.save();
       ctx.translate(0, -camOffset);
+
+      // 屋根より上の宇宙空間（深宇宙グラデーション＋キラキラ星、映らない範囲は自動スキップ）
+      this.drawSpaceSky(ctx, w, camOffset, h, world);
 
       // 左右端ループゾーンの目印（ごく薄いガイド線）
       ctx.fillStyle = "rgba(88, 144, 248, 0.08)";
