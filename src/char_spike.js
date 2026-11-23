@@ -30,7 +30,7 @@
     G: "#ffa490"
   };
 
-  // 上半身（腕固定：歩行開始 0.2s = 12F 未満用）
+  // 上半身（待機・通過コマ中立腕・高い位置 16行）
   const UPPER_ARM_FIXED = [
     "................",
     ".....MMMMM......",
@@ -44,15 +44,19 @@
     ".....MMMMM......",
     "....SMHHHMM.....",
     "....SMKDDDM.....",
-    "....SSHMMMS.....",
-    ".....SDMMHS.....",
-    ".....SDMMHS.....",
+    "....SSKMMKMS....",
+    ".....SKHHKMS....",
+    ".....SDHHKMS....",
     ".....SMMMMS....."
   ];
 
-  // 上半身（腕振り4コマ：歩行 0.2s = 12F 以上用）
+  const UPPER_ARM_FIXED_LOW = ["................"].concat(UPPER_ARM_FIXED);
+
+  // 上半身（くの字腕振り4コマ）
+  // 0コマ目（1px沈み 17行）：肘をくの字に曲げて手前腕を前上へ振り、奥腕を後ろへ
   const UPPER_ARM_0 = [
     "................",
+    "................",
     ".....MMMMM......",
     "....MMHHHHM.....",
     "....MMKKKKK.....",
@@ -63,32 +67,17 @@
     "......DDD.......",
     ".....MMMMM......",
     "....SMHHHMM.....",
-    "...SSMKDDDMH....",
-    "..SS.SHMMMSMM...",
-    "..H..SDMMDS.....",
-    ".....SDMMDS.....",
+    "....SDKMMKMM....",
+    "....SDKMMKDDHH..",
+    "...DDDKHHHHHHM..",
+    "...SD.KDDDDDD...",
     ".....SMMMMS....."
   ];
+  // 1コマ目（高い位置 16行）：腕は体側中立
   const UPPER_ARM_1 = UPPER_ARM_FIXED;
+  // 2コマ目（1px沈み 17行）：肘をくの字に背中後ろへ引き、奥腕を前へ振る
   const UPPER_ARM_2 = [
     "................",
-    ".....MMMMM......",
-    "....MMHHHHM.....",
-    "....MMKKKKK.....",
-    "....MMKKEGK.....",
-    "....MSSDDMM.....",
-    ".....MMKKK......",
-    ".....SDDDD......",
-    "......DDD.......",
-    ".....MMMMM......",
-    "....SMHHHMM.....",
-    "....SMKDDDMMHH..",
-    "....SHMMMS.MM...",
-    "....SSDMMDS.....",
-    "...HHSDMMDS.....",
-    ".....SMMMMS....."
-  ];
-  const UPPER_ARM_3 = [
     "................",
     ".....MMMMM......",
     "....MMHHHHM.....",
@@ -100,12 +89,14 @@
     "......DDD.......",
     ".....MMMMM......",
     "....SMHHHMM.....",
-    "....SMKDDDM.....",
-    "....SSHMMMS.....",
-    "....MSDMMDS.....",
-    "....HSDMMDS.....",
+    "...DDKMMKDMMM...",
+    ".KHHKDDDKMMSSMH.",
+    ".KDDMMHHKMMDDD..",
+    "....KDDMMMMS....",
     ".....SMMMMS....."
   ];
+  // 3コマ目（高い位置 16行）：腕は体側中立
+  const UPPER_ARM_3 = UPPER_ARM_FIXED;
 
   const LOWER_IDLE = [
     ".....SMMMMS.....",
@@ -120,54 +111,140 @@
     "....DDD..DDD...."
   ];
 
-  // 細かい足運び4コマ（細身金属骨格脚）
+  // 足運び4コマ（手前足＝明M/H、奥足＝暗S/D。前足は x=11..13 までしっかり前へ踏み出す）
   const LOWER_FOOT_0 = [
     ".....SMMMMS.....",
-    "....MMS..SMM....",
-    "...SDD....HMM...",
+    ".....MMMSSS.....",
+    "....MM...SSS....",
+    "...HH.....SSS...",
     "...DD......DD...",
-    "..SD........HM..",
-    "..SD........SM..",
-    "..DD........DS..",
-    ".SSS........MM..",
-    ".DDD........HMM.",
-    "............DDD."
+    "..MH.......SS...",
+    "..SD.......DD...",
+    "..HMM......SSS..",
+    "..DDD......DDD.."
   ];
   const LOWER_FOOT_1 = [
     ".....SMMMMS.....",
-    ".....MSMMMS.....",
-    "....DDM..SM.....",
-    "....MH...SD.....",
-    "....MS...SD.....",
-    "....SD...DD.....",
-    "....MM..........",
-    "....MM..........",
-    "....HMM.........",
-    "....DDD........."
+    ".....SMMMMS.....",
+    ".....MMMSSS.....",
+    "....MM..SS......",
+    "....HH..DD......",
+    "...DD...SS......",
+    "...HMM..DD......",
+    "...DDD..SS......",
+    ".......SSS......",
+    ".......DDD......"
   ];
   const LOWER_FOOT_2 = [
     ".....SMMMMS.....",
-    "....MMS..SMM....",
-    "...MMH....SDD...",
+    ".....SSSMMM.....",
+    "....SSS..MM.....",
+    "...SSS....HH....",
     "...DD......DD...",
-    "..MH........SD..",
-    "..MS........SD..",
-    "..SD........DD..",
-    "..MM........SSS.",
-    ".HMM........DDD.",
-    ".DDD............"
+    "..SS.......MH...",
+    "..DD.......SD...",
+    "..SSS......HMM..",
+    "..DDD......DDD.."
   ];
   const LOWER_FOOT_3 = [
     ".....SMMMMS.....",
-    ".....SMMMS......",
-    "....SM..MDD.....",
-    "....SD...HM.....",
-    "....SD...SM.....",
-    "....DD...SD.....",
-    "..........MM....",
-    "..........MM....",
-    ".........HMM....",
-    ".........DDD...."
+    ".....SMMMMS.....",
+    ".....SSSMMM.....",
+    "....SS..MM......",
+    "....DD..HH......",
+    "...SS...DD......",
+    "...SSS..MH......",
+    "...DDD..SD......",
+    ".......HMM......",
+    ".......DDD......"
+  ];
+
+  // 着地スタン状態（State 11：19F）用：尻もち ＋ 2段階起き上がり
+  const ENDO_SIT = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "....MMMMM.......",
+    "...MMHHHHM......",
+    "...MMKKKKK......",
+    "...MMKKEGK......",
+    "...MSSDDMM......",
+    "....MMKKK.......",
+    "....SDDDD.......",
+    ".....DDD........",
+    "....MMMMM.......",
+    "...SMHHHMM......",
+    "..SSMKDDDMH.....",
+    ".MSS.SHMMMSMM...",
+    ".MM..SDMMDSHH...",
+    ".HH..SMMMMS.....",
+    ".....SMMMMMMHH..",
+    ".....DDDDDDDMMM.",
+    ".....DDDDDDDDDD."
+  ];
+
+  const ENDO_RECOVER_0 = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    ".....MMMMM......",
+    "....MMHHHHM.....",
+    "....MMKKKKK.....",
+    "....MMKKEGK.....",
+    "....MSSDDMM.....",
+    ".....MMKKK......",
+    ".....SDDDD......",
+    "......DDD.......",
+    ".....MMMMM......",
+    "....SMHHHMM.....",
+    "....SMKDDDMM....",
+    "....SSHMMMSHH...",
+    ".....SDMMDSMM...",
+    ".....SDMMDS.....",
+    ".....SMMMMS.....",
+    "....MMS..SMM....",
+    "....DD....DD....",
+    "....MH....HM....",
+    "....SD....DS....",
+    "...HMM....HMM...",
+    "...DDD....DDD..."
+  ];
+
+  const ENDO_RECOVER_1 = [
+    "................",
+    "................",
+    "................",
+    ".....MMMMM......",
+    "....MMHHHHM.....",
+    "....MMKKKKK.....",
+    "....MMKKEGK.....",
+    "....MSSDDMM.....",
+    ".....MMKKK......",
+    ".....SDDDD......",
+    "......DDD.......",
+    ".....MMMMM......",
+    "....SMHHHMM.....",
+    "....SMKDDDM.....",
+    "....SSKMMKMS....",
+    ".....SKHHKMS....",
+    ".....SDHHKMS....",
+    ".....SMMMMS.....",
+    ".....MS..SM.....",
+    "....MMS..SMM....",
+    "....DD....DD....",
+    "....MH....HM....",
+    "....MS....SM....",
+    "....SD....DS....",
+    "...HMM....HMM...",
+    "...DDD....DDD..."
   ];
 
   // はしご（裏側にいるため腹側＝正面向き・肋骨フレームと赤い両目が見える）
@@ -381,7 +458,7 @@
   ];
 
   const WALK_STEP_FRAMES = 4; // 歩行コマ切替間隔（4Fごと）
-  const ARM_DELAY_FRAMES = 12; // 0.2s（12F）未満は足のみ、以上で腕も振る
+  const ARM_DELAY_FRAMES = 0; // 歩き始めから即くの字の腕振りを行う
 
   Object.assign(R.Renderer.prototype, {
     initSpikeSprites() {
@@ -389,14 +466,17 @@
       this.endoSpikeSprites = makeSpriteSet(
         {
           idle: UPPER_ARM_FIXED.concat(LOWER_IDLE),
-          foot0: UPPER_ARM_FIXED.concat(LOWER_FOOT_0),
+          foot0: UPPER_ARM_FIXED_LOW.concat(LOWER_FOOT_0),
           foot1: UPPER_ARM_FIXED.concat(LOWER_FOOT_1),
-          foot2: UPPER_ARM_FIXED.concat(LOWER_FOOT_2),
+          foot2: UPPER_ARM_FIXED_LOW.concat(LOWER_FOOT_2),
           foot3: UPPER_ARM_FIXED.concat(LOWER_FOOT_3),
           walk0: UPPER_ARM_0.concat(LOWER_FOOT_0),
           walk1: UPPER_ARM_1.concat(LOWER_FOOT_1),
           walk2: UPPER_ARM_2.concat(LOWER_FOOT_2),
           walk3: UPPER_ARM_3.concat(LOWER_FOOT_3),
+          sit: ENDO_SIT,
+          recover0: ENDO_RECOVER_0,
+          recover1: ENDO_RECOVER_1,
           climbHold: ENDO_CLIMB_HOLD,
           climbL: ENDO_CLIMB_L,
           climbR: ENDO_CLIMB_R,
@@ -692,20 +772,47 @@
       }
 
       if (slot.state === 11) {
-        const img = sprites["idle_" + facing];
+        const st = slot.stunTimer != null ? slot.stunTimer : 0;
+        let poseKey = "recover1";
+        let hammerOffsetX = 0;
+        let hammerOffsetY = 2;
+
+        if (st >= 10) {
+          poseKey = "sit";
+          hammerOffsetX = (faceVal & LEFT) ? 1 : -1;
+          hammerOffsetY = 8;
+        } else if (st >= 5) {
+          poseKey = "recover0";
+          hammerOffsetY = 4;
+        } else {
+          poseKey = "recover1";
+          hammerOffsetY = 2;
+        }
+
+        const img = sprites[poseKey + "_" + facing] || sprites["idle_" + facing];
         if (!img) return;
-        const f = world ? world.f : 0;
-        const shakeX = ((f >> 1) & 1) ? 1 : -1;
-        const drawX = baseX + shakeX;
-        const stunY = baseDrawY + 2;
-        ctx.drawImage(img, drawX, stunY);
-        this.drawSpikeBackHammer(drawX, stunY, faceVal, "side");
-        const sx1 = baseX + 7 + Math.round(Math.cos(f * 0.35) * 5);
-        const sx2 = baseX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
-        ctx.fillStyle = "#ff3030";
-        ctx.fillRect(sx1, baseDrawY + 1, 2, 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(sx2, baseDrawY + 2, 2, 2);
+        ctx.drawImage(img, baseX, baseDrawY);
+        this.drawSpikeBackHammer(baseX + hammerOffsetX, baseDrawY + hammerOffsetY, faceVal, "side");
+
+        // 尻もち直後の着地衝撃エフェクト（最初の6F間）
+        if (st >= 14) {
+          const isBurst = st >= 17;
+          ctx.fillStyle = "#ffffff";
+          if (isBurst) {
+            ctx.fillRect(baseX - 2, baseDrawY + 23, 2, 1);
+            ctx.fillRect(baseX - 1, baseDrawY + 24, 2, 1);
+            ctx.fillRect(baseX + 16, baseDrawY + 23, 2, 1);
+            ctx.fillRect(baseX + 15, baseDrawY + 24, 2, 1);
+            ctx.fillStyle = "#bccae0";
+            ctx.fillRect(baseX - 3, baseDrawY + 22, 1, 1);
+            ctx.fillRect(baseX + 18, baseDrawY + 22, 1, 1);
+          } else {
+            ctx.fillRect(baseX - 3, baseDrawY + 22, 1, 1);
+            ctx.fillRect(baseX - 2, baseDrawY + 25, 1, 1);
+            ctx.fillRect(baseX + 18, baseDrawY + 22, 1, 1);
+            ctx.fillRect(baseX + 17, baseDrawY + 25, 1, 1);
+          }
+        }
         return;
       }
 
@@ -745,20 +852,25 @@
       }
 
       let poseKey = "idle";
+      let stepOffsetY = 0;
       if (slot.state === 5) {
         poseKey = "fall";
       } else if (slot.state === 8 || slot.state === 9) {
         poseKey = "walk2";
+        stepOffsetY = 1;
       } else if (slot.state === 1) {
         const wf = slot.walkFrames || 0;
         const step = Math.floor(wf / WALK_STEP_FRAMES) & 3;
         poseKey = (wf >= ARM_DELAY_FRAMES ? "walk" : "foot") + step;
+        if (step === 0 || step === 2) {
+          stepOffsetY = 1;
+        }
       }
 
       const img = sprites[poseKey + "_" + facing] || sprites["idle_" + facing];
       if (!img) return;
       ctx.drawImage(img, baseX, baseDrawY);
-      this.drawSpikeBackHammer(baseX, baseDrawY, faceVal, "side");
+      this.drawSpikeBackHammer(baseX, baseDrawY + stepOffsetY, faceVal, "side");
     },
 
     drawSpike(slot, worldWidth, world) {
