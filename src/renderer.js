@@ -560,7 +560,7 @@
       const padLeft = 1;
       const padTop = 1;
       const totalGridW = gridW + 3; // 左1ドット縁 + 右2ドット(縁+影)
-      const totalGridH = gridH + 3; // 上1ドット縁 + 下2ドット(縁+影)
+      const totalGridH = glyphH + 3; // 上1ドット縁 + 下2ドット(縁+影)
 
       const body = new Uint8Array(totalGridW * totalGridH);
       for (let i = 0; i < str.length; i++) {
@@ -628,6 +628,28 @@
       const x = Math.round((canvasW - img.width) / 2);
       const y = Math.round(centerY - img.height / 2);
       ctx.drawImage(img, x, y);
+    }
+
+    drawBannerTextPartial(ctx, canvasW, fullText, visibleNonSpaceCount, centerY) {
+      if (visibleNonSpaceCount <= 0) return;
+      const str = String(fullText || "").toUpperCase();
+      const fullImg = this.getBannerCanvas(str);
+      const x = Math.round((canvasW - fullImg.width) / 2);
+      const y = Math.round(centerY - fullImg.height / 2);
+
+      let partial = "";
+      let count = 0;
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        if (ch !== " ") {
+          if (count >= visibleNonSpaceCount) break;
+          count += 1;
+        }
+        partial += ch;
+      }
+      if (!partial) return;
+      const partImg = this.getBannerCanvas(partial);
+      ctx.drawImage(partImg, x, y);
     }
 
     drawRoof(ctx, w) {
@@ -875,7 +897,31 @@
 
       ctx.restore();
 
-      if (world.clearPhase === 2) {
+      if (world.tryAgainActive && world.tryAgainPhase >= 2) {
+        this.startBannerBlinkTick = 0;
+        this.lastStartBannerTimer = null;
+
+        // 上から下へ2.0秒(120F)かけて黒幕を下ろす（Phase 3は全画面真っ黒）
+        const curtainRatio = world.tryAgainPhase === 3
+          ? 1
+          : Math.min(1, (world.tryAgainTimer || 0) / 120);
+        const curtainH = Math.min(h, Math.round((h * curtainRatio) / 2) * 2);
+        if (curtainH > 0) {
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, 0, w, curtainH);
+          if (curtainH < h) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+            ctx.fillRect(0, curtainH, w, Math.min(2, h - curtainH));
+          }
+        }
+
+        // TRY AGAIN ! を一文字ずつ0.08秒(4.8F)間隔で出す（空白を飛ばし、黒幕より手前に残す）
+        const elapsedF = world.tryAgainPhase === 3
+          ? 120
+          : (world.tryAgainTimer || 0);
+        const visibleCount = Math.min(9, 1 + Math.floor(elapsedF / 4.8));
+        this.drawBannerTextPartial(ctx, w, "TRY AGAIN !", visibleCount, 96);
+      } else if (world.clearPhase === 2) {
         this.startBannerBlinkTick = 0;
         this.lastStartBannerTimer = null;
         this.drawBannerText(ctx, w, "CLEAR!", 100);
