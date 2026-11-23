@@ -38,38 +38,42 @@
     A: "#222e42"
   };
 
-  // はしご昇降ポーズ生成（横長マイコンのまま白い4本足で左右柱を掴んで登る）
+  // はしご昇降ポーズ生成（厚み8pxの横長マイコンのまま白い4本足で左右柱を掴んで登る）
   function buildClimbPose(isFront, mode) {
     const antX = isFront ? 5 : 10;
     const body = isFront
       ? [
           "..KKKKKKKKKKKK..",
           "..KHHHHHHHHHHK..",
+          "..KGGGGGGGGGGK..",
           "..KGPPPPPPGGGK..",
           "..KGGGGGGGGGYK..",
           "..KDDDDDPPPDLK..",
+          "..KDDDDDDDDDDK..",
           "..KKKKKKKKKKKK.."
         ]
       : [
           "..KKKKKKKKKKKK..",
           "..KHHHHHHHHHHK..",
           "..KDPDPDPDPDPK..",
+          "..KDPDPDPDPDPK..",
           "..KDDMMMMMMDDK..",
           "..KDDPPDDPPDDK..",
+          "..KDDDDDDDDDDK..",
           "..KKKKKKKKKKKK.."
         ];
 
     const grid = Array.from({ length: 26 }, () => new Array(16).fill("."));
-    grid[4][antX - 1] = "K";
-    grid[4][antX] = "L";
-    grid[4][antX + 1] = "K";
-    for (let y = 5; y < 10; y++) {
+    grid[3][antX - 1] = "K";
+    grid[3][antX] = "L";
+    grid[3][antX + 1] = "K";
+    for (let y = 4; y < 8; y++) {
       grid[y][antX] = "M";
     }
     for (let idx = 0; idx < body.length; idx++) {
       const brow = body[idx];
       for (let x = 0; x < 16; x++) {
-        grid[10 + idx][x] = brow[x];
+        grid[8 + idx][x] = brow[x];
       }
     }
 
@@ -80,22 +84,22 @@
     }
 
     if (mode === "hold") {
-      put(1, 7, "W"); put(1, 8, "W"); put(1, 9, "W"); put(1, 10, "W"); put(1, 11, "S");
-      put(14, 7, "W"); put(14, 8, "W"); put(14, 9, "W"); put(14, 10, "W"); put(14, 11, "S");
+      put(1, 5, "W"); put(1, 6, "W"); put(1, 7, "W"); put(1, 8, "W"); put(1, 9, "S");
+      put(14, 5, "W"); put(14, 6, "W"); put(14, 7, "W"); put(14, 8, "W"); put(14, 9, "S");
       put(3, 16, "W"); put(2, 17, "W"); put(1, 18, "W"); put(1, 19, "W"); put(1, 20, "S"); put(1, 21, "W");
       put(12, 16, "W"); put(13, 17, "W"); put(14, 18, "W"); put(14, 19, "W"); put(14, 20, "S"); put(14, 21, "W");
       put(5, 16, "S"); put(5, 17, "A"); put(5, 18, "S");
       put(10, 16, "S"); put(10, 17, "A"); put(10, 18, "S");
     } else if (mode === "L") {
-      put(1, 5, "W"); put(1, 6, "W"); put(1, 7, "W"); put(1, 8, "S"); put(1, 9, "W"); put(1, 10, "W"); put(1, 11, "S");
-      put(14, 12, "W"); put(14, 13, "W"); put(14, 14, "S"); put(14, 15, "S");
+      put(1, 3, "W"); put(1, 4, "W"); put(1, 5, "W"); put(1, 6, "S"); put(1, 7, "W"); put(1, 8, "W"); put(1, 9, "S");
+      put(14, 11, "W"); put(14, 12, "W"); put(14, 13, "S"); put(14, 14, "S");
       put(3, 16, "W"); put(2, 17, "W"); put(1, 18, "W"); put(1, 19, "W"); put(1, 20, "S"); put(1, 21, "W"); put(1, 22, "W");
       put(12, 16, "W"); put(13, 16, "W"); put(14, 16, "W"); put(15, 17, "S");
       put(5, 16, "S"); put(5, 17, "S"); put(5, 18, "A"); put(5, 19, "S");
       put(10, 16, "S"); put(10, 17, "A");
     } else {
-      put(14, 5, "W"); put(14, 6, "W"); put(14, 7, "W"); put(14, 8, "S"); put(14, 9, "W"); put(14, 10, "W"); put(14, 11, "S");
-      put(1, 12, "W"); put(1, 13, "W"); put(1, 14, "S"); put(1, 15, "S");
+      put(14, 3, "W"); put(14, 4, "W"); put(14, 5, "W"); put(14, 6, "S"); put(14, 7, "W"); put(14, 8, "W"); put(14, 9, "S");
+      put(1, 11, "W"); put(1, 12, "W"); put(1, 13, "S"); put(1, 14, "S");
       put(12, 16, "W"); put(13, 17, "W"); put(14, 18, "W"); put(14, 19, "W"); put(14, 20, "S"); put(14, 21, "W"); put(14, 22, "W");
       put(3, 16, "W"); put(2, 16, "W"); put(1, 16, "W"); put(0, 17, "S");
       put(10, 16, "S"); put(10, 17, "S"); put(10, 18, "A"); put(10, 19, "S");
@@ -111,15 +115,17 @@
     const body = [
       "...KKKKKKKKKKKK.",
       "...KMMMPPPPMMMK.",
+      "...KDDDDDDDDDDK.",
       "...KDDGGGGGGDDK.",
-      "...KGGPPPPGGPPK.",
+      "...KGPPPPGGPPPK.",
+      "...KGGGGGGGGGGK.",
       "...KHHHHHHHHHHK.",
       "...KKKKKKKKKKKK."
     ];
     for (let idx = 0; idx < body.length; idx++) {
       const brow = body[idx];
       for (let x = 0; x < 16; x++) {
-        grid[20 + idx][x] = brow[x];
+        grid[18 + idx][x] = brow[x];
       }
     }
 
@@ -131,14 +137,14 @@
     grid[24][1] = "K";
 
     if (phase === 0) {
-      grid[23][13] = "L";
-      grid[22][13] = "Y";
-    } else if (phase === 1) {
-      grid[23][13] = "P";
       grid[22][13] = "L";
-    } else {
-      grid[23][13] = "L";
+      grid[21][13] = "Y";
+    } else if (phase === 1) {
       grid[22][13] = "P";
+      grid[21][13] = "L";
+    } else {
+      grid[22][13] = "L";
+      grid[21][13] = "P";
     }
 
     function put(x, y, ch) {
@@ -148,20 +154,20 @@
     }
 
     if (phase === 0) {
-      put(4, 19, "W"); put(3, 18, "W"); put(2, 17, "W"); put(2, 16, "W"); put(1, 15, "W");
-      put(7, 19, "S"); put(7, 18, "A"); put(6, 17, "S"); put(6, 16, "S");
-      put(10, 19, "S"); put(10, 18, "A"); put(11, 17, "S"); put(11, 16, "S");
-      put(13, 19, "W"); put(13, 18, "W"); put(14, 17, "W"); put(14, 16, "W"); put(14, 15, "W");
+      put(4, 17, "W"); put(3, 16, "W"); put(2, 15, "W"); put(2, 14, "W"); put(1, 13, "W");
+      put(7, 17, "S"); put(7, 16, "A"); put(6, 15, "S"); put(6, 14, "S");
+      put(10, 17, "S"); put(10, 16, "A"); put(11, 15, "S"); put(11, 14, "S");
+      put(13, 17, "W"); put(13, 16, "W"); put(14, 15, "W"); put(14, 14, "W"); put(14, 13, "W");
     } else if (phase === 1) {
-      put(4, 19, "W"); put(4, 18, "W"); put(5, 17, "W"); put(5, 16, "W");
-      put(7, 19, "S"); put(6, 18, "A"); put(6, 17, "S"); put(5, 16, "S"); put(5, 15, "S");
-      put(10, 19, "S"); put(11, 18, "A"); put(11, 17, "S"); put(12, 16, "S"); put(12, 15, "S");
-      put(13, 19, "W"); put(14, 18, "W"); put(14, 17, "W"); put(15, 16, "W");
+      put(4, 17, "W"); put(4, 16, "W"); put(5, 15, "W"); put(5, 14, "W");
+      put(7, 17, "S"); put(6, 16, "A"); put(6, 15, "S"); put(5, 14, "S"); put(5, 13, "S");
+      put(10, 17, "S"); put(11, 16, "A"); put(11, 15, "S"); put(12, 14, "S"); put(12, 13, "S");
+      put(13, 17, "W"); put(14, 16, "W"); put(14, 15, "W"); put(15, 14, "W");
     } else {
-      put(4, 19, "W"); put(4, 18, "W"); put(3, 17, "W"); put(3, 16, "W"); put(3, 15, "W"); put(2, 14, "W");
-      put(7, 19, "S"); put(7, 18, "S"); put(7, 17, "A"); put(7, 16, "S"); put(8, 15, "S");
-      put(10, 19, "S"); put(10, 18, "S"); put(10, 17, "A"); put(9, 16, "S"); put(9, 15, "S");
-      put(13, 19, "W"); put(13, 18, "W"); put(13, 17, "W"); put(14, 16, "W"); put(14, 15, "W"); put(15, 14, "W");
+      put(4, 17, "W"); put(4, 16, "W"); put(3, 15, "W"); put(3, 14, "W"); put(3, 13, "W"); put(2, 12, "W");
+      put(7, 17, "S"); put(7, 16, "S"); put(7, 15, "A"); put(7, 14, "S"); put(8, 13, "S");
+      put(10, 17, "S"); put(10, 16, "S"); put(10, 15, "A"); put(9, 14, "S"); put(9, 13, "S");
+      put(13, 17, "W"); put(13, 16, "W"); put(13, 15, "W"); put(14, 14, "W"); put(14, 13, "W"); put(15, 12, "W");
     }
 
     return grid.map(row => row.join(""));
@@ -174,18 +180,18 @@
       "................",
       "................",
       "................",
-      "................",
       "...KLK..........",
-      "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
       "..KDPPDPDDLYDK..",
+      "..KDDDDDDDDDDK..",
       "..KKKKKKKKKKKK..",
       "...WW.SS..WW.SS.",
       "..WS...S..WS..S.",
@@ -202,18 +208,18 @@
       "................",
       "................",
       "................",
-      "................",
       "..KLK...........",
       "...KM...........",
       "....M...........",
       "....M...........",
       "....M...........",
-      "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
-      "..KDPPDPDDLYDK.W",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
+      "..KDPPDPDDLYDK..",
+      "..KDDDDDDDDDDK.W",
       "..KKKKKKKKKKKKWW",
       "..WS..S..SSWWWS.",
       ".WS...S..A..SS..",
@@ -231,18 +237,18 @@
       "................",
       "................",
       "................",
-      "................",
       "..KLK...........",
       "...KM...........",
       "....M...........",
       "....M...........",
       "....M...........",
-      "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
-      "W.KDPPDPDDLYDK..",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
+      "..KDPPDPDDLYDK..",
+      "W.KDDDDDDDDDDK..",
       "WWKKKKKKKKKKKK..",
       ".SWW.SS....WW.S.",
       "..SS..A.....WWSS",
@@ -261,18 +267,18 @@
       "................",
       "................",
       "................",
-      "................",
       "...KLK..........",
-      "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
-      "W.KDPPDPDDLYDK..",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
+      "..KDPPDPDDLYDK..",
+      "W.KDDDDDDDDDDK..",
       "WWKKKKKKKKKKKK..",
       ".SWW.SS...WW..S.",
       "..SS..A....W..S.",
@@ -290,18 +296,18 @@
       "................",
       "................",
       "................",
-      "................",
       "...KLK..........",
-      "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
       "..KDPPDPDDLYDK..",
+      "..KDDDDDDDDDDK..",
       "..KKKKKKKKKKKK..",
       "....WW.SS.WWWS..",
       "....WS..S.WW.SS.",
@@ -318,18 +324,18 @@
       "................",
       "................",
       "................",
-      "................",
       "....KLK.........",
-      ".....M..........",
       ".....M..........",
       ".....M..........",
       ".....M..........",
       ".....M..........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
+      "..KGGGGGGGGGGK..",
       "..KGPPPPPPGGGK..",
       "..KGGGGGGGGGYK..",
       "..KDDDDDPPPDLK..",
+      "..KDDDDDDDDDDK..",
       "..KKKKKKKKKKKK..",
       "..WW.SS..SS.WW..",
       "..WS.S....S.SW..",
@@ -346,9 +352,7 @@
       "................",
       "................",
       "................",
-      "................",
       ".........KLK....",
-      "..........M.....",
       "..........M.....",
       "..........M.....",
       "..........M.....",
@@ -356,8 +360,10 @@
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
       "..KDPDPDPDPDPK..",
+      "..KDPDPDPDPDPK..",
       "..KDDMMMMMMDDK..",
       "..KDDPPDDPPDDK..",
+      "..KDDDDDDDDDDK..",
       "..KKKKKKKKKKKK..",
       "..WW.SS..SS.WW..",
       "..WS.S....S.SW..",
@@ -377,18 +383,18 @@
     fall: [
       "................",
       "................",
-      "................",
       "..KLK...........",
       "...KM...........",
       "....M...........",
       "....M...........",
       "....M...........",
-      "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
       "..KDPPDPDDLYDK..",
+      "..KDDDDDDDDDDK..",
       ".WKKKKKKKKKKKKW.",
       "WW.SS......SS.WW",
       "W...S......S...W",
@@ -414,16 +420,16 @@
       "................",
       "................",
       "................",
-      "................",
-      "................",
       ".......KLK......",
       ".......KM.......",
       "......KM........",
       "....KKKKKK......",
       "...KHHHHHHKK....",
-      "..KHGGPPGGGGKK..",
-      "..KGGGGGGGGGYK..",
-      "...KDDPPDDDDLK..",
+      "..KHGGGGGGGGKK..",
+      "..KGGPPPPGGGGKK.",
+      "..KGGGGGGGGGGYK.",
+      "..KGDDPPDDDDDLK.",
+      "...KDDDDDDDDDK..",
       "....KKKDDDDKK...",
       "....WW.KKKKK..W.",
       "...WS...S..WWW..",
@@ -443,18 +449,18 @@
       "................",
       "................",
       "................",
-      "................",
       "...KLK..........",
-      "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "....M...........",
       "..KKKKKKKKKKKK..",
       "..KHHHHHHHHHHK..",
-      "..KGPPGGGGPPPK..",
-      "..KGGGGGGGDDPK..",
+      "..KGGGGGGGGGGK..",
+      "..KGPPPPGGPPPK..",
+      "..KGGGGGGGGDDK..",
       "..KDPPDPDDLYDK..",
+      "..KDDDDDDDDDDK..",
       "..KKKKKKKKKKKK..",
       "..WW.SS..SS.WW..",
       ".WS...S..S...SW.",
@@ -492,10 +498,10 @@
         if (isBack) ctx.globalAlpha = 0.85;
 
         if (enemy.state === 15) {
-          ctx.drawImage(headImg, 0, 6, 16, 6, baseX, baseDrawY - 6, 16, 6);
+          ctx.drawImage(headImg, 0, 5, 16, 6, baseX, baseDrawY - 6, 16, 6);
         } else {
-          const sh = phase ? 11 : 10;
-          ctx.drawImage(headImg, 0, 6, 16, sh, baseX, baseDrawY - sh, 16, sh);
+          const sh = phase ? 12 : 11;
+          ctx.drawImage(headImg, 0, 5, 16, sh, baseX, baseDrawY - sh, 16, sh);
         }
 
         const legMain = isBack ? "#4c5e7a" : "#ffffff";
@@ -511,7 +517,7 @@
 
         if (enemy.state === 16) {
           ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
-          ctx.fillRect(baseX + 9, baseDrawY - 12, 2, 2);
+          ctx.fillRect(baseX + 9, baseDrawY - 13, 2, 2);
         }
         ctx.restore();
         return;
@@ -561,9 +567,9 @@
           const sx1 = starCenterX + Math.round(Math.cos(f * 0.35) * 4);
           const sx2 = starCenterX + Math.round(Math.cos(f * 0.35 + Math.PI) * 4);
           ctx.fillStyle = isBack ? "#7084a8" : "#ffec48";
-          ctx.fillRect(sx1, baseDrawY + 8, 2, 2);
+          ctx.fillRect(sx1, baseDrawY + 7, 2, 2);
           ctx.fillStyle = isBack ? "#9cb0d4" : "#ffffff";
-          ctx.fillRect(sx2, baseDrawY + 10, 2, 2);
+          ctx.fillRect(sx2, baseDrawY + 9, 2, 2);
         }
         ctx.restore();
         return;
