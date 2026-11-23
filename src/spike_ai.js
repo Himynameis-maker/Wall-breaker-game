@@ -22,6 +22,7 @@
 
     update(world) {
       const sp = world.spike;
+      if (!sp) return;
       const ma = world.mario;
       if (sp.state === 15 || sp.state === 16) {
         sp.bits = 0;
