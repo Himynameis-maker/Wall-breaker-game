@@ -318,6 +318,7 @@
           fireball: cfg.fireball,
           fireballFast: cfg.fireballFast
         });
+        world.mario.prevHammer = (currentBits() & HAMMER) !== 0;
         updateTopBadge();
         applyZoomMode();
         renderer.resetCamera(world);
@@ -337,6 +338,11 @@
 
       function stepOneFrame() {
         world.step(currentBits());
+        if (world.deathFinished) {
+          createStage();
+          return true;
+        }
+        return false;
       }
 
       function dirLabel(b) {
@@ -401,15 +407,15 @@
         const rem = world.countBreakables();
         const doorTotal = world.doors ? world.doors.length : 0;
         const doorOpen = world.doors ? world.doors.filter(d => d.state >= 2).length : 0;
-        const marioHitLabel = world.marioHitFireball
-          ? " [FIRE!]"
-          : (world.marioHitEnemy ? " [HIT!]" : "");
+        const marioHitLabel = world.marioDead
+          ? (" [DEAD:" + (world.marioHitFireball ? "FIRE" : "ENEMY") + " ph:" + world.deathPhase + "]")
+          : (world.marioHitFireball ? " [FIRE!]" : (world.marioHitEnemy ? " [HIT!]" : ""));
         const introTag = world.introActive
           ? (" [INTRO " + (world.introFrame / 60).toFixed(1) + "s]")
           : (world.startBannerTimer > 0 ? " [START!]" : "");
         hudEl.textContent =
           "STAGE:" + world.stageNumber + " MAP:" + world.cols + "x" + world.rows + " F:" + world.f + " TGT:" + rem + " DR:" + doorOpen + "/" + doorTotal + " IN:" + dirLabel(inp) + (paused ? " [PAUSE]" : "") + introTag + "\n" +
-          "Mario st:" + m.state + " X:" + m.x + " Y:" + m.y + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + marioHitLabel + "\n" +
+          "Mario st:" + m.state + " X:" + m.x + " Y:" + Math.round(m.y) + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + marioHitLabel + "\n" +
           "Spike st:" + s.state + " X:" + s.x + " Y:" + s.y + " (" + s.row + "," + s.col + ") f:" + (s.facing & 2 ? "L" : "R") + actorTag(s) + "\n" +
           "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer + " | " + fireballLabel(world.fireball, world);
         if (world.timedBombs && world.timedBombs.length > 0) {
@@ -600,8 +606,12 @@
         if (!paused) {
           acc += dt;
           while (acc >= STEP_MS) {
-            stepOneFrame();
+            const restarted = stepOneFrame();
             acc -= STEP_MS;
+            if (restarted) {
+              acc = 0;
+              break;
+            }
           }
           renderNow();
         }
