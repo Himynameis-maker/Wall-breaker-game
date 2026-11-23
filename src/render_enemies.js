@@ -391,6 +391,10 @@
         this.drawSpanagon(enemy, worldWidth, world);
         return;
       }
+      if (enemy.enemyType === "eggplant" && typeof this.drawEggplant === "function") {
+        this.drawEggplant(enemy, worldWidth, world);
+        return;
+      }
       const drawY = enemy.y - 22;
       this.drawEnemyAt(enemy, enemy.x, drawY, world);
       if (enemy.x > worldWidth - 16) {
