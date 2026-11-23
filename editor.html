@@ -137,16 +137,16 @@
       gap: 6px;
       align-items: center;
       font-size: 0.78rem;
-      padding-top: 2px;
+      padding-top: 4px;
       border-top: 1px solid #263046;
     }
-    .enemy-chips {
+    .actor-chips {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
       align-items: center;
     }
-    .enemy-chip {
+    .actor-chip {
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -156,7 +156,11 @@
       padding: 3px 6px;
       font-size: 0.74rem;
     }
-    .enemy-chip button {
+    .actor-chip.off {
+      color: #8b9ab4;
+      border-style: dashed;
+    }
+    .actor-chip button {
       padding: 2px 5px;
       font-size: 0.72rem;
     }
@@ -333,9 +337,9 @@
         <span style="color:#93a4c0;">※同じマスを再タップでも反転</span>
       </div>
 
-      <div id="enemyListRow" class="sub-opts hidden">
-        <span>配置中の敵:</span>
-        <div id="enemyChips" class="enemy-chips"></div>
+      <div id="actorListRow" class="sub-opts">
+        <span>配置中の敵・親方:</span>
+        <div id="actorChips" class="actor-chips"></div>
       </div>
     </div>
 
@@ -410,7 +414,7 @@
       const E = window.WreckEditor;
 
       const SWATCH_COLORS = {
-        erase: "#1b2232",
+        erase: "#326ee0",
         wall1: "#b8743c",
         wall2: "#b8c6dc",
         wall3: "#485266",
@@ -450,8 +454,7 @@
       const paletteGrid = document.getElementById("paletteGrid");
       const timedBombOpts = document.getElementById("timedBombOpts");
       const actorDirOpts = document.getElementById("actorDirOpts");
-      const enemyListRow = document.getElementById("enemyListRow");
-      const enemyChips = document.getElementById("enemyChips");
+      const actorChips = document.getElementById("actorChips");
       const exportArea = document.getElementById("exportArea");
 
       const undoBtn = document.getElementById("undoBtn");
@@ -559,12 +562,49 @@
         const targetWarn = targets === 0 ? "（0個だと即クリア）" : "";
         stageSummary.textContent = "壊す対象: " + targets + "個" + targetWarn + " / 敵: " + data.enemies.length + "体";
 
-        // 配置中敵チップ更新
-        enemyChips.innerHTML = "";
-        enemyListRow.classList.toggle("hidden", data.enemies.length === 0);
+        // 配置中の親方・ザコ敵チップ更新
+        actorChips.innerHTML = "";
+        if (data.spike) {
+          const spWrap = document.createElement("span");
+          spWrap.className = "actor-chip";
+          const spTxt = document.createElement("span");
+          spTxt.textContent = "親方(" + data.spike.row + "," + data.spike.col + ")";
+          const spDir = document.createElement("button");
+          spDir.type = "button";
+          spDir.textContent = data.spike.dir === LEFT ? "←" : "→";
+          spDir.title = "親方の向き反転";
+          spDir.addEventListener("click", () => {
+            pushUndo();
+            data.spike.dir = data.spike.dir === LEFT ? RIGHT : LEFT;
+            saveSlots();
+            refreshAllEdit();
+          });
+          const spDel = document.createElement("button");
+          spDel.type = "button";
+          spDel.className = "danger-btn";
+          spDel.textContent = "×";
+          spDel.title = "親方を消す";
+          spDel.addEventListener("click", () => {
+            pushUndo();
+            data.spike = null;
+            saveSlots();
+            showStatus("親方を消しました");
+            refreshAllEdit();
+          });
+          spWrap.appendChild(spTxt);
+          spWrap.appendChild(spDir);
+          spWrap.appendChild(spDel);
+          actorChips.appendChild(spWrap);
+        } else {
+          const offChip = document.createElement("span");
+          offChip.className = "actor-chip off";
+          offChip.textContent = "親方: なし";
+          actorChips.appendChild(offChip);
+        }
+
         data.enemies.forEach((e, idx) => {
           const wrap = document.createElement("span");
-          wrap.className = "enemy-chip";
+          wrap.className = "actor-chip";
           const label = e.enemyType === "eggplant" ? "緑" : (e.enemyType === "spanagonFast" ? "赤" : "黄");
           const txt = document.createElement("span");
           txt.textContent = label + "(" + e.row + "," + e.col + ")";
@@ -592,7 +632,7 @@
           wrap.appendChild(txt);
           wrap.appendChild(dirBtn);
           wrap.appendChild(delBtn);
-          enemyChips.appendChild(wrap);
+          actorChips.appendChild(wrap);
         });
       }
 
