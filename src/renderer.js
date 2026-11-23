@@ -489,6 +489,11 @@
         return;
       }
 
+      if (world.marioDead) {
+        this.isIntroCamMoving = false;
+        return;
+      }
+
       if (world.introActive) {
         const t = world.introFrame || 0;
         const total = world.introTotalFrames || 288;
@@ -815,13 +820,15 @@
         }
       }
 
-      // 表側キャラ層（表ザコ敵 → プレイヤー → 火の玉）
+      // 表側キャラ層（表ザコ敵 → プレイヤー → 火の玉、死亡時は最前面へ回す）
       if (world.enemies) {
         for (const enemy of world.enemies) {
           if (!enemy.isBack) this.drawEnemy(enemy, w, world);
         }
       }
-      this.drawActor(world.mario, this.marioSprites, w, world);
+      if (!world.marioDead) {
+        this.drawActor(world.mario, this.marioSprites, w, world);
+      }
       if (world.fireball) {
         this.drawFireball(world.fireball);
       }
@@ -861,24 +868,9 @@
         }
       }
 
-      if (world.marioHitEnemy) {
-        const m = world.mario;
-        const f = world.f || 0;
-        const blink = ((f >> 1) & 1) === 0;
-        const boxW = 24;
-        const boxH = 11;
-        const hx = Math.max(1, Math.min(w - boxW - 1, Math.round(m.x - 4)));
-        const hy = Math.max(camOffset + 2, Math.round(m.y - 40));
-        ctx.fillStyle = blink ? "#d82020" : "#181820";
-        ctx.fillRect(hx, hy, boxW, boxH);
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(hx + 0.5, hy + 0.5, boxW - 1, boxH - 1);
-        ctx.fillStyle = blink ? "#ffffff" : "#ffec48";
-        ctx.font = "bold 9px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("HIT", hx + boxW / 2, hy + boxH / 2 + 0.5);
+      // 死亡演出中のプレイヤーは一番手前（最前面）へ描画
+      if (world.marioDead) {
+        this.drawActor(world.mario, this.marioSprites, w, world);
       }
 
       ctx.restore();
