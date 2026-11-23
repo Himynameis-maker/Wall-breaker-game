@@ -489,7 +489,7 @@
         return;
       }
 
-      if (world.marioDead) {
+      if (world.marioDead || world.clearPhase === 2) {
         this.isIntroCamMoving = false;
         return;
       }
@@ -875,7 +875,11 @@
 
       ctx.restore();
 
-      if (world.introActive) {
+      if (world.clearPhase === 2) {
+        this.startBannerBlinkTick = 0;
+        this.lastStartBannerTimer = null;
+        this.drawBannerText(ctx, w, "CLEAR!", 100);
+      } else if (world.introActive) {
         this.startBannerBlinkTick = 0;
         this.lastStartBannerTimer = null;
         const text = "STAGE " + (world.stageNumber || 1);
