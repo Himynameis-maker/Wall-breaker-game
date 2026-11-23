@@ -70,6 +70,12 @@
       this.spikeAggressive = !!config.spikeAggressive;
       this.marioHitEnemy = false;
       this.marioHitFireball = false;
+      this.marioDead = false;
+      this.deathPhase = 0; // 0:生存, 1:コチラ向き静止, 2:跳ね＆足上げ落下, 3:画面外余韻
+      this.deathTimer = 0;
+      this.deathVy = 0;
+      this.deathBottomY = 0;
+      this.deathFinished = false;
       this.allBackStop = false;
       this.allBackTimer = 0;
       this.allBackDone = false;
@@ -917,6 +923,54 @@
       }
     }
 
+    startMarioDeath() {
+      if (this.marioDead) return;
+      this.marioDead = true;
+      this.deathPhase = 1;
+      this.deathTimer = 0;
+      this.deathVy = 0;
+      this.deathFinished = false;
+      this.startBannerTimer = 0;
+
+      const viewH = 240;
+      const minCamY = -24;
+      const maxCamY = Math.max(minCamY, this.rows * 32 + 24 - viewH);
+      const approxCamY = Math.max(minCamY, Math.min(maxCamY, Math.round(this.mario.y - viewH * 0.58)));
+      this.deathBottomY = approxCamY + viewH + 42;
+    }
+
+    updateMarioDeath() {
+      if (!this.marioDead || this.deathFinished) return;
+
+      if (this.deathPhase === 1) {
+        this.deathTimer += 1;
+        if (this.deathTimer >= 32) {
+          this.deathPhase = 2;
+          this.deathTimer = 0;
+          this.deathVy = -3.4;
+        }
+        return;
+      }
+
+      if (this.deathPhase === 2) {
+        this.deathTimer += 1;
+        this.mario.y += this.deathVy;
+        this.deathVy = Math.min(7.0, this.deathVy + 0.38);
+        if (this.mario.y >= this.deathBottomY || this.deathTimer >= 120) {
+          this.deathPhase = 3;
+          this.deathTimer = 0;
+        }
+        return;
+      }
+
+      if (this.deathPhase === 3) {
+        this.deathTimer += 1;
+        if (this.deathTimer >= 36) {
+          this.deathFinished = true;
+        }
+      }
+    }
+
     // ROM $D50B〜$D57E + $D58A 準拠: 同陣営ザコ敵同士（表同士・裏同士）の接触判定
     updateEnemyCollisions() {
       if (!this.enemies || this.enemies.length < 2) return;
@@ -1027,6 +1081,11 @@
         return;
       }
 
+      if (this.marioDead) {
+        this.updateMarioDeath();
+        return;
+      }
+
       if (this.startBannerTimer > 0) {
         this.startBannerTimer -= 1;
       }
@@ -1064,6 +1123,10 @@
 
       this.updateEffectsAndWaves();
       this.updateMarioEnemyHit();
+      if (this.marioHitEnemy) {
+        this.startMarioDeath();
+        return;
+      }
       this.f += 1;
     }
   }
