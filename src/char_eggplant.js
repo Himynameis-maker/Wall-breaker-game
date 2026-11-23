@@ -489,37 +489,7 @@
 
       const f = world ? world.f : 0;
 
-      // State 15/16: ドラム缶捕獲待機・閉じ込め状態（蓋上端 baseDrawY の上にアンテナ・本体上部と白い前足が出る）
-      if (enemy.state === 15 || enemy.state === 16) {
-        const phase = (f >> 2) & 1;
-        const headImg = sprites.frontStand_R;
-        if (!headImg) return;
-        ctx.save();
-        if (isBack) ctx.globalAlpha = 0.85;
-
-        if (enemy.state === 15) {
-          ctx.drawImage(headImg, 0, 5, 16, 6, baseX, baseDrawY - 6, 16, 6);
-        } else {
-          const sh = phase ? 12 : 11;
-          ctx.drawImage(headImg, 0, 5, 16, sh, baseX, baseDrawY - sh, 16, sh);
-        }
-
-        const legMain = isBack ? "#4c5e7a" : "#ffffff";
-        const legShade = isBack ? "#34445c" : "#c8d6e8";
-        const h1 = enemy.state === 15 ? (baseDrawY - 3) : (baseDrawY - (phase ? 6 : 3));
-        const h2 = enemy.state === 15 ? (baseDrawY - 3) : (baseDrawY - (phase ? 3 : 6));
-        ctx.fillStyle = legMain;
-        ctx.fillRect(baseX, h1, 2, 3);
-        ctx.fillRect(baseX + 14, h2, 2, 3);
-        ctx.fillStyle = legShade;
-        ctx.fillRect(baseX, h1 + 2, 2, 1);
-        ctx.fillRect(baseX + 14, h2 + 2, 2, 1);
-
-        if (enemy.state === 16) {
-          ctx.fillStyle = isBack ? "#7084a8" : (phase ? "#ffec48" : "#ffffff");
-          ctx.fillRect(baseX + 9, baseDrawY - 13, 2, 2);
-        }
-        ctx.restore();
+     if (enemy.state === 15 || enemy.state === 16) {
         return;
       }
 
