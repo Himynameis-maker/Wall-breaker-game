@@ -325,6 +325,14 @@
         renderNow();
       }
 
+      function advanceToNextStage() {
+        const opts = stageSelect.options;
+        if (opts && opts.length > 0) {
+          stageSelect.selectedIndex = (stageSelect.selectedIndex + 1) % opts.length;
+        }
+        createStage();
+      }
+
       function currentBits() {
         let b = stickBits | keyBits | (hammerBtnDown ? HAMMER : 0);
         if ((b & (LEFT | RIGHT)) === (LEFT | RIGHT)) {
@@ -340,6 +348,10 @@
         world.step(currentBits());
         if (world.deathFinished) {
           createStage();
+          return true;
+        }
+        if (world.clearFinished) {
+          advanceToNextStage();
           return true;
         }
         return false;
@@ -413,8 +425,11 @@
         const introTag = world.introActive
           ? (" [INTRO " + (world.introFrame / 60).toFixed(1) + "s]")
           : (world.startBannerTimer > 0 ? " [START!]" : "");
+        const clearTag = world.clearPhase === 1
+          ? (" [CLR-POST " + ((36 - world.clearTimer) / 60).toFixed(2) + "s]")
+          : (world.clearPhase === 2 ? (" [CLEAR! " + ((180 - world.clearTimer) / 60).toFixed(1) + "s]") : "");
         hudEl.textContent =
-          "STAGE:" + world.stageNumber + " MAP:" + world.cols + "x" + world.rows + " F:" + world.f + " TGT:" + rem + " DR:" + doorOpen + "/" + doorTotal + " IN:" + dirLabel(inp) + (paused ? " [PAUSE]" : "") + introTag + "\n" +
+          "STAGE:" + world.stageNumber + " MAP:" + world.cols + "x" + world.rows + " F:" + world.f + " TGT:" + rem + " DR:" + doorOpen + "/" + doorTotal + " IN:" + dirLabel(inp) + (paused ? " [PAUSE]" : "") + introTag + clearTag + "\n" +
           "Mario st:" + m.state + " X:" + m.x + " Y:" + Math.round(m.y) + " (" + m.row + "," + m.col + ") f:" + (m.facing & 2 ? "L" : "R") + actorTag(m) + marioHitLabel + "\n" +
           "Spike st:" + s.state + " X:" + s.x + " Y:" + s.y + " (" + s.row + "," + s.col + ") f:" + (s.facing & 2 ? "L" : "R") + actorTag(s) + "\n" +
           "AI    bits:" + dirLabel(s.bits) + "(" + s.bits + ") $39:" + ai.mem39 + " $3A:" + ai.timer + " | " + fireballLabel(world.fireball, world);
