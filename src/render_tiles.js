@@ -74,36 +74,38 @@
 
     drawSandLadder(ctx, x, yTop, frame) {
       ctx.save();
-      // 半透明の砂色ハシゴ本体
-      ctx.globalAlpha = 0.52;
-      ctx.fillStyle = "#b89858";
-      ctx.fillRect(x + 2, yTop, 2, 32);
-      ctx.fillRect(x + 12, yTop, 2, 32);
-      ctx.fillStyle = "#e6ca86";
-      for (let ry = 3; ry < 32; ry += 6) {
+      // 半透明の砂色ハシゴ本体（左右柱 x+1 / x+13、4px周期で隙間1px）
+      ctx.globalAlpha = 0.48;
+      ctx.fillStyle = "#9c7e48";
+      ctx.fillRect(x + 1, yTop, 2, 32);
+      ctx.fillRect(x + 13, yTop, 2, 32);
+      for (let ry = 1; ry < 32; ry += 4) {
+        ctx.fillStyle = "#d8bc7c";
         ctx.fillRect(x + 2, yTop + ry, 12, 2);
+        ctx.fillStyle = "#846838";
+        ctx.fillRect(x + 2, yTop + ry + 2, 12, 1);
       }
 
-      // 横へ吹き抜ける砂嵐（風スジ＆砂粒ドット）
+      // ハシゴ幅（x+1 .. x+14）から絶対にはみ出ない控えめな砂嵐エフェクト
+      ctx.beginPath();
+      ctx.rect(x + 1, yTop, 14, 32);
+      ctx.clip();
+      const f = Math.max(0, frame | 0);
       const rows = [
-        { y: 2, speed: 2, len: 6, off: 0, alpha: 0.72 },
-        { y: 7, speed: 1, len: 4, off: 9, alpha: 0.58 },
-        { y: 12, speed: 2, len: 7, off: 5, alpha: 0.76 },
-        { y: 17, speed: 1, len: 5, off: 13, alpha: 0.54 },
-        { y: 22, speed: 2, len: 6, off: 3, alpha: 0.74 },
-        { y: 27, speed: 1, len: 4, off: 11, alpha: 0.60 }
+        { y: 5, speed: 1, len: 3, off: 0, alpha: 0.28 },
+        { y: 13, speed: 2, len: 2, off: 6, alpha: 0.24 },
+        { y: 21, speed: 1, len: 3, off: 10, alpha: 0.30 },
+        { y: 29, speed: 2, len: 2, off: 3, alpha: 0.24 }
       ];
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
-        const px = (frame * r.speed + r.off) & 15;
+        const px = (f * r.speed + r.off) % 14;
         ctx.globalAlpha = r.alpha;
-        ctx.fillStyle = (i & 1) ? "#f8eab8" : "#d8b46c";
+        ctx.fillStyle = (i & 1) ? "#dfc88e" : "#cbb074";
         for (let dx = 0; dx < r.len; dx++) {
-          const sx = x + ((16 - ((px + dx) & 15)) & 15);
+          const sx = x + 1 + ((13 - ((px + dx) % 14) + 14) % 14);
           ctx.fillRect(sx, yTop + r.y, 1, 1);
         }
-        const gx = x + ((16 - ((px + 8) & 15)) & 15);
-        ctx.fillRect(gx, yTop + r.y + 2, 1, 1);
       }
       ctx.restore();
     },
@@ -112,39 +114,43 @@
       const blink = ((frame >> 1) & 1) === 0;
       const sideColor = stage <= 2 && blink ? "#ffd0e0" : "#b84468";
       const rungColor = stage <= 2 && blink ? "#ffffff" : "#ff88a8";
+      const rungShadow = stage <= 2 && blink ? "#e0a0b8" : "#a8385c";
 
       if (stage >= 4) {
         ctx.fillStyle = sideColor;
-        ctx.fillRect(x + 2, yTop + 2, 2, 28);
-        ctx.fillRect(x + 12, yTop + 2, 2, 28);
-        ctx.fillStyle = rungColor;
-        for (let ry = 4; ry < 30; ry += 6) {
-          ctx.fillRect(x + 2, yTop + ry, 4, 2);
-          ctx.fillRect(x + 10, yTop + ry, 4, 2);
+        ctx.fillRect(x + 1, yTop + 1, 2, 30);
+        ctx.fillRect(x + 13, yTop + 1, 2, 30);
+        for (let ry = 1; ry < 32; ry += 4) {
+          ctx.fillStyle = rungColor;
+          ctx.fillRect(x + 2, yTop + ry, 5, 2);
+          ctx.fillRect(x + 9, yTop + ry, 5, 2);
+          ctx.fillStyle = rungShadow;
+          ctx.fillRect(x + 2, yTop + ry + 2, 5, 1);
+          ctx.fillRect(x + 9, yTop + ry + 2, 5, 1);
         }
       } else if (stage === 3) {
         ctx.fillStyle = sideColor;
-        ctx.fillRect(x + 2, yTop + 4, 2, 10);
-        ctx.fillRect(x + 2, yTop + 18, 2, 10);
-        ctx.fillRect(x + 12, yTop + 6, 2, 10);
-        ctx.fillRect(x + 12, yTop + 20, 2, 8);
+        ctx.fillRect(x + 1, yTop + 3, 2, 11);
+        ctx.fillRect(x + 1, yTop + 18, 2, 11);
+        ctx.fillRect(x + 13, yTop + 5, 2, 11);
+        ctx.fillRect(x + 13, yTop + 20, 2, 9);
         ctx.fillStyle = rungColor;
-        for (let ry = 6; ry < 28; ry += 7) {
-          ctx.fillRect(x + 3, yTop + ry, 3, 2);
-          ctx.fillRect(x + 10, yTop + ry, 3, 2);
+        for (let ry = 4; ry < 29; ry += 5) {
+          ctx.fillRect(x + 2, yTop + ry, 4, 2);
+          ctx.fillRect(x + 10, yTop + ry, 4, 2);
         }
       } else if (stage === 2) {
         ctx.fillStyle = sideColor;
-        ctx.fillRect(x + 2, yTop + 6, 2, 7);
-        ctx.fillRect(x + 12, yTop + 17, 2, 8);
+        ctx.fillRect(x + 1, yTop + 6, 2, 7);
+        ctx.fillRect(x + 13, yTop + 17, 2, 8);
         ctx.fillStyle = rungColor;
-        ctx.fillRect(x + 3, yTop + 8, 4, 2);
-        ctx.fillRect(x + 9, yTop + 19, 4, 2);
-        ctx.fillRect(x + 6, yTop + 13, 3, 2);
+        ctx.fillRect(x + 2, yTop + 8, 4, 2);
+        ctx.fillRect(x + 10, yTop + 19, 4, 2);
+        ctx.fillRect(x + 6, yTop + 13, 4, 2);
       } else {
         ctx.fillStyle = rungColor;
-        ctx.fillRect(x + 3, yTop + 7, 2, 3);
-        ctx.fillRect(x + 11, yTop + 14, 2, 3);
+        ctx.fillRect(x + 2, yTop + 7, 2, 3);
+        ctx.fillRect(x + 12, yTop + 14, 2, 3);
         ctx.fillRect(x + 5, yTop + 22, 3, 2);
       }
     },
@@ -450,22 +456,27 @@
 
       if (val === TILE.LADDER) {
         ctx.fillStyle = "#d89040";
-        ctx.fillRect(x + 2, yTop, 2, 32);
-        ctx.fillRect(x + 12, yTop, 2, 32);
-        ctx.fillStyle = "#f8c068";
-        for (let ry = 3; ry < 32; ry += 6) {
+        ctx.fillRect(x + 1, yTop, 2, 32);
+        ctx.fillRect(x + 13, yTop, 2, 32);
+        for (let ry = 1; ry < 32; ry += 4) {
+          ctx.fillStyle = "#f8c068";
           ctx.fillRect(x + 2, yTop + ry, 12, 2);
+          ctx.fillStyle = "#b87028";
+          ctx.fillRect(x + 2, yTop + ry + 2, 12, 1);
         }
       } else if (val === TILE.SAND_LADDER) {
         this.drawSandLadder(ctx, x, yTop, world.f);
       } else if (val === TILE.BREAK_LADDER) {
         ctx.fillStyle = "#b84468";
-        ctx.fillRect(x + 2, yTop, 2, 32);
-        ctx.fillRect(x + 12, yTop, 2, 32);
-        ctx.fillStyle = "#ff88a8";
-        for (let ry = 3; ry < 32; ry += 6) {
+        ctx.fillRect(x + 1, yTop, 2, 32);
+        ctx.fillRect(x + 13, yTop, 2, 32);
+        for (let ry = 1; ry < 32; ry += 4) {
+          ctx.fillStyle = "#ff88a8";
           ctx.fillRect(x + 2, yTop + ry, 5, 2);
           ctx.fillRect(x + 9, yTop + ry, 5, 2);
+          ctx.fillStyle = "#a8385c";
+          ctx.fillRect(x + 2, yTop + ry + 2, 5, 1);
+          ctx.fillRect(x + 9, yTop + ry + 2, 5, 1);
         }
       } else if (isCrumblingLadderTile(val)) {
         const info = world.getCrumblingInfo ? world.getCrumblingInfo(Math.floor(yTop / 32), Math.floor(x / 16)) : null;
