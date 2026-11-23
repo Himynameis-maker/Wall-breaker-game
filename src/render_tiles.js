@@ -56,72 +56,178 @@
     [[0, -1], [-1, -2], [-1, -3], [-2, -4]]
   ];
 
-  // 2回壊せる壁（ステンレスパネル）用パレット・ドット絵（16×24）
-  const STAINLESS_PALETTE = {
-    W: "#f2f8ff",
-    H: "#dcebf7",
-    L: "#b8cde0",
-    M: "#92a9c2",
-    S: "#687f98",
-    D: "#42546a",
-    K: "#202a38",
-    B: "#101620",
-    I: "#4d5b6e",
-    R: "#6e564a"
+  // 新3回壊せる壁（黒目の硬質ステンレスパネル）用パレット・ドット絵（16×24）
+  const DARK_STAINLESS_PALETTE = {
+    W: "#e8f2ff",
+    H: "#a6b8cf",
+    L: "#74859c",
+    M: "#434d5e",
+    S: "#313948",
+    D: "#222834",
+    K: "#1b212d",
+    E: "#525f73",
+    B: "#090c14",
+    I: "#627084",
+    R: "#a86438"
   };
 
-  const STAINLESS_WALL_FULL = [
-    ".SWWWWWWWWWWWWS.",
-    "DWHHHHHHHHHHHHSK",
-    "DHDDDDDDDDDDDDSK",
-    "DHMDMMMMLLHWDMSK",
-    "DHMMMMMLLHWLMMSK",
-    "DHMMMMLLHWLMMMSK",
-    "DHMMMLLHWLMMMMSK",
-    "DHMMLDDDDDDMMMSK",
-    "DHMLHHHHHHHMMMSK",
-    "DHLHLMMMMMMMMMSK",
-    "DHMDMMMMMMMMDMSK",
-    "DHSSSSSSSSSSSSSK",
-    "DDDDLLDDDDLLDDSK",
-    "DWHHHHHHHHHHHHSK",
-    "DHDDDDDDDDDDDDSK",
-    "DHMDMMMMLLHWDMSK",
-    "DHMMMMMLLHWLMMSK",
-    "DHMMMMLLHWLMMMSK",
-    "DHMMMDDDDDDMMMSK",
-    "DHMLHHHHHHHMMMSK",
-    "DHMDMMMMMMMMDMSK",
-    "DHSSSSSSSSSSSSSK",
-    "DSSSSSSSSSSSSSDK",
+  const DARK_STAINLESS_FULL = [
+    ".LWWWWWWWWWWWWL.",
+    "EWHHHHHHHHHHHHSK",
+    "EHDDDDDDDDDDDDSK",
+    "EHMDMMMMLLHWDMSK",
+    "EHMMMMMLLHWLMMSK",
+    "EHMMMMLLHWLMMMSK",
+    "EHMMMLLHWLMMMMSK",
+    "EHMMLDDDDDDMMMSK",
+    "EHMLHHHHHHHMMMSK",
+    "EHLHLMMMMMMMMMSK",
+    "EHMDMMMMMMMMDMSK",
+    "EHSSSSSSSSSSSSSK",
+    "EDDDLLDDDDLLDDSK",
+    "EWHHHHHHHHHHHHSK",
+    "EHDDDDDDDDDDDDSK",
+    "EHMDMMMMLLHWDMSK",
+    "EHMMMMMLLHWLMMSK",
+    "EHMMMMLLHWLMMMSK",
+    "EHMMMDDDDDDMMMSK",
+    "EHMLHHHHHHHMMMSK",
+    "EHMDMMMMMMMMDMSK",
+    "EHSSSSSSSSSSSSSK",
+    "ESSSSSSSSSSSSSDK",
     "KDDDDDDDDDDDDDKK"
   ];
 
-  const STAINLESS_WALL_DAMAGED = [
-    ".SWWWWWWWWS.....",
-    "DWHHHHHHHWBBK...",
-    "DHDDDDWWBBIBBK..",
-    "DHMDMWBBBRIBBWSK",
-    "DHMMMWBBIIBBHLSK",
-    "DHMMBBBRBBWLMMSK",
-    "DHMWBBBDWWLMMMSK",
-    "DHWBBWDDDDMMBWSK",
-    ".DWBWLLHHHBBWMSK",
+  const DARK_STAINLESS_MID = [
+    ".LWWWWWWWWWLL...",
+    "EWHHHHHHHHHWWBK.",
+    "EHDDDDDDWWBBIISK",
+    "EHMDMMMMWBBIRWSK",
+    "EHMMMMMWBBWLMMSK",
+    "EHMMMMWBBWLMMMSK",
+    "EHMMMWBBWMMMMMSK",
+    "EHMMLBDDDDDMMMSK",
+    "EHMLHBBHHHHMMMSK",
+    "EHLHLWBBMMMMMMSK",
+    "EHMDMMWBBMMMDMSK",
+    "EHSSSSSWBSSSSSSK",
+    "EDDDLLDDBDLLDDSK",
+    "EWHHHHHHBBHHHHWK",
+    "EHDDDDDDWBDDDDSK",
+    "EHMDMMMMMWBWDMSK",
+    "EHMMMMMLLHWBMMSK",
+    "EHMMMMLLHWLMBBSK",
+    "EHMMMDDDDDDMMMSK",
+    "EHMLHHHHHHHMMMSK",
+    "EHMDMMMMMMMMDMSK",
+    "EHSSSSSSSSSSSSSK",
+    "ESSSSSSSSSSSSSDK",
+    "KDDDDDDDDDDDDDKK"
+  ];
+
+  const DARK_STAINLESS_DAMAGED = [
+    ".LWWWWWWWWL.....",
+    "EWHHHHHHHWBBK...",
+    "EHDDDDWWBBIBBK..",
+    "EHMDMWBBBRIBBWSK",
+    "EHMMMWBBIIBBHLSK",
+    "EHMMBBBRBBWLMMSK",
+    "EHMWBBBDWWLMMMSK",
+    "EHWBBWDDDDMMBWSK",
+    ".EWBWLLHHHBBWMSK",
     ".BBWMMMLLBBLMMSK",
-    "DDBBMDMMBBLMMDSK",
-    "DHSSBBBWBBSSSSSK",
-    "DDDDWBBIBBLLDDSK",
-    "DWHHBBWIBBHHHHWK",
-    "DHDDDBBWWBBDDDSK",
-    "DHMDMWBBMWBBWDSK",
-    "DHMMWBBMMMWBBWSK",
-    "DHMWBBMMLLWWBBK.",
-    "DHWBBDDDDDDWWBB.",
-    "DHBBHHHHHHHHWBK.",
-    "DHBWDMMMMMMMWB..",
-    "DHSSSMMMMMMBBS..",
-    "DSSSDDDDDSSBBK..",
+    "EDBBMDMMBBLMMDSK",
+    "EHSSBBBWBBSSSSSK",
+    "EDDDWBBIBBLLDDSK",
+    "EWHHBBWIBBHHHHWK",
+    "EHDDDBBWWBBDDDSK",
+    "EHMDMWBBMWBBWDSK",
+    "EHMMWBBMMMWBBWSK",
+    "EHMWBBMMLLWWBBK.",
+    "EHWBBDDDDDDWWBB.",
+    "EHBBHHHHHHHHWBK.",
+    "EHBWDMMMMMMMWB..",
+    "EHSSSMMMMMMBBS..",
+    "ESSSDDDDDSSBBK..",
     "KDDDDDDDDDKBK..."
+  ];
+
+  // 新2回壊せる壁（シルバーのサーバー本体）用パレット・ドット絵（16×24）
+  const SERVER_PALETTE = {
+    A: "#dce6f4",
+    B: "#cfd9e6",
+    C: "#b6c4d6",
+    D: "#9aa8bc",
+    E: "#8a99ad",
+    F: "#7e8da2",
+    G: "#6e7d92",
+    H: "#606f84",
+    I: "#4c586c",
+    J: "#384354",
+    K: "#262e3c",
+    L: "#1a212d",
+    M: "#141923",
+    N: "#2b3444",
+    O: "#707f94",
+    P: "#48b0ff",
+    Q: "#38d890",
+    R: "#d88838",
+    X: "#e04838",
+    Z: "#ffffff"
+  };
+
+  const SERVER_WALL_FULL = [
+    ".FAAAAAAAAAAAAF.",
+    "ICCCCCCCCCCCCCGK",
+    "IBENNNNNNNNNNEGK",
+    "IBEHPHHHHHHKKEGK",
+    "IBELLLLLLLLLLEGK",
+    "IBEHJJJJJHHJJEGK",
+    "IBELLLLLLLLLLEGK",
+    "IBCCCCCCCCCCCCGK",
+    "IBDJAJQDDNDNNDGK",
+    "IBDJCJDDDGGGGDGK",
+    "IBBBBBBBBBBBBBGK",
+    "IBDKKKKKKKKKKDGK",
+    "IBDLLLLOOLLLLDGK",
+    "IBDEEEEEEEEEEEGK",
+    "IBDLLLLOOLLLLDGK",
+    "IBDEEEEEEEEEEEGK",
+    "IBDLLLLOOLLLLDGK",
+    "IBDEEEEEEEEEEEGK",
+    "IBDLLLLOOLLLLDGK",
+    "IBDEEEEEEEEEEEGK",
+    "IBCCCCCCCCCCCCGK",
+    "IEKEEEEEEEEEKEGK",
+    "JHHHHHHHHHHHHHKK",
+    ".LLLMMMMMMMMLLL."
+  ];
+
+  const SERVER_WALL_DAMAGED = [
+    ".FAAAAAAAAAF....",
+    "ICCCCCCCZZMMK...",
+    "IBENNNZMMPRMMK..",
+    "IBEHPZMMPMMXZZGK",
+    "IBELLZMMMRMZLLGK",
+    "IBEHJMZMMMZJJEGK",
+    "IBELLZMMLZLLLEGK",
+    "IBCCCZMMZCCCCCGK",
+    "IBDJAJMZMZDNNDGK",
+    ".BDJCZMMZMGGGGGK",
+    ".MMBBZMZMMMBBBGK",
+    ".BMMKKZMMZKKKKGK",
+    "IBDLLMMMPMMMLDGK",
+    "IBDEEMMMRMMZEEGK",
+    "IBDLLZMMMXMMZLD.",
+    "IBDEEEZMMMZMMMK.",
+    "IBDLLLLZMMMZMM..",
+    "IBDEEEEEZZMMZMK.",
+    "IBDLLLLOOZZMMMK.",
+    "IBDEEEEEEEZMMMK.",
+    "IBCCCCCCCCZMMMK.",
+    "IEKEEEEEEEZMMB..",
+    "JHHHHHHHHHZMKK..",
+    ".LLLMMMMMMLL...."
   ];
 
   function bakeTile16x24(rows, palette) {
@@ -163,185 +269,56 @@
       }
     },
 
-    drawServerCracks(ctx, x, yTop, level) {
-      if (level >= 1) {
-        ctx.fillStyle = "#121720";
-        ctx.fillRect(x + 10, yTop + 10, 2, 3);
-        ctx.fillRect(x + 9, yTop + 13, 2, 2);
-        ctx.fillRect(x + 7, yTop + 15, 2, 4);
-        ctx.fillRect(x + 6, yTop + 19, 2, 2);
-
-        ctx.fillStyle = "#e4eef8";
-        ctx.fillRect(x + 12, yTop + 11, 1, 2);
-        ctx.fillRect(x + 9, yTop + 16, 1, 2);
+    drawDarkStainlessWall(ctx, x, yTop, hp, frame) {
+      if (!this.darkStainlessWallSprites) {
+        this.darkStainlessWallSprites = {
+          full: bakeTile16x24(DARK_STAINLESS_FULL, DARK_STAINLESS_PALETTE),
+          mid: bakeTile16x24(DARK_STAINLESS_MID, DARK_STAINLESS_PALETTE),
+          damaged: bakeTile16x24(DARK_STAINLESS_DAMAGED, DARK_STAINLESS_PALETTE)
+        };
       }
-      if (level >= 2) {
-        ctx.fillStyle = "#121720";
-        ctx.fillRect(x + 3, yTop + 11, 2, 3);
-        ctx.fillRect(x + 4, yTop + 14, 3, 2);
-        ctx.fillRect(x + 5, yTop + 21, 2, 4);
-        ctx.fillRect(x + 7, yTop + 24, 3, 2);
-        ctx.fillRect(x + 10, yTop + 25, 2, 4);
-        ctx.fillRect(x + 11, yTop + 21, 2, 3);
-
-        ctx.fillStyle = "#e4eef8";
-        ctx.fillRect(x + 5, yTop + 12, 1, 2);
-        ctx.fillRect(x + 7, yTop + 22, 1, 2);
-        ctx.fillRect(x + 9, yTop + 26, 1, 2);
+      let img = this.darkStainlessWallSprites.full;
+      let rows = DARK_STAINLESS_FULL;
+      if (hp === 2) {
+        img = this.darkStainlessWallSprites.mid;
+        rows = DARK_STAINLESS_MID;
+      } else if (hp <= 1) {
+        img = this.darkStainlessWallSprites.damaged;
+        rows = DARK_STAINLESS_DAMAGED;
       }
-    },
+      ctx.drawImage(img, x, yTop + 8);
 
-    drawServerWall(ctx, x, yTop, hp, frame) {
-      // 横幅: マスピッタリ16px (x+0 .. x+15)
-      // 高さ: 上の鉄骨下端(yTop+6)に届かない yTop+8 .. yTop+31 (高さ24px)
-
-      // 1. 天板トップ（左右角を1px面取り）
-      ctx.fillStyle = "#dce6f4";
-      ctx.fillRect(x + 2, yTop + 8, 12, 1);
-      ctx.fillStyle = "#7e8da2";
-      ctx.fillRect(x + 1, yTop + 8, 1, 1);
-      ctx.fillRect(x + 14, yTop + 8, 1, 1);
-
-      // 2. ケース外殻＋メインシルバー面 (yTop+9 .. yTop+30)
-      ctx.fillStyle = "#4c586c";
-      ctx.fillRect(x, yTop + 9, 1, 21);
-      ctx.fillStyle = "#262e3c";
-      ctx.fillRect(x + 15, yTop + 9, 1, 22);
-      ctx.fillStyle = "#6e7d92";
-      ctx.fillRect(x + 14, yTop + 9, 1, 21);
-      ctx.fillStyle = "#9aa8bc";
-      ctx.fillRect(x + 1, yTop + 9, 13, 21);
-
-      // 左エッジのハイライト
-      ctx.fillStyle = "#cfd9e6";
-      ctx.fillRect(x + 1, yTop + 9, 1, 21);
-      // 上部ベゼル面
-      ctx.fillStyle = "#b6c4d6";
-      ctx.fillRect(x + 1, yTop + 9, 13, 1);
-
-      // 3. 上段：サーバー用ドライブベイ 2段 (yTop+10 .. yTop+15)
-      ctx.fillStyle = "#8a99ad";
-      ctx.fillRect(x + 2, yTop + 10, 12, 5);
-      ctx.fillStyle = "#2b3444";
-      ctx.fillRect(x + 3, yTop + 10, 10, 1);
-      // ベイ1
-      ctx.fillStyle = "#606f84";
-      ctx.fillRect(x + 3, yTop + 11, 10, 1);
-      ctx.fillStyle = "#48b0ff";
-      ctx.fillRect(x + 4, yTop + 11, 1, 1); // 極小アクセスLED
-      ctx.fillStyle = "#222936";
-      ctx.fillRect(x + 11, yTop + 11, 2, 1); // ロックラッチ
-      // 仕切り溝
-      ctx.fillStyle = "#1a212d";
-      ctx.fillRect(x + 3, yTop + 12, 10, 1);
-      // ベイ2
-      ctx.fillStyle = "#606f84";
-      ctx.fillRect(x + 3, yTop + 13, 10, 1);
-      ctx.fillStyle = "#343f50";
-      ctx.fillRect(x + 4, yTop + 13, 5, 1);
-      ctx.fillStyle = "#3e4a5c";
-      ctx.fillRect(x + 11, yTop + 13, 2, 1);
-      // 下溝
-      ctx.fillStyle = "#1a212d";
-      ctx.fillRect(x + 3, yTop + 14, 10, 1);
-      // ベイ仕切りバー
-      ctx.fillStyle = "#b6c4d6";
-      ctx.fillRect(x + 2, yTop + 15, 12, 1);
-
-      // 4. 中段：電源スイッチ＋フロントポート (yTop+16 .. yTop+18)
-      ctx.fillStyle = "#384354";
-      ctx.fillRect(x + 3, yTop + 16, 3, 2);
-      ctx.fillStyle = "#dce6f4";
-      ctx.fillRect(x + 4, yTop + 16, 1, 1);
-      ctx.fillStyle = "#b6c4d6";
-      ctx.fillRect(x + 4, yTop + 17, 1, 1);
-      ctx.fillStyle = "#38d890";
-      ctx.fillRect(x + 6, yTop + 16, 1, 1); // 静かな電源ランプ
-
-      // 右側フロントポート・端子
-      ctx.fillStyle = "#1f2733";
-      ctx.fillRect(x + 9, yTop + 16, 1, 1);
-      ctx.fillRect(x + 11, yTop + 16, 2, 1);
-      ctx.fillStyle = "#6e7d92";
-      ctx.fillRect(x + 9, yTop + 17, 4, 1);
-      // 仕切りハイライト
-      ctx.fillStyle = "#cfd9e6";
-      ctx.fillRect(x + 2, yTop + 18, 12, 1);
-
-      // 5. 下段：無骨な吸気スリット・通気口 (yTop+19 .. yTop+28)
-      ctx.fillStyle = "#232b38";
-      ctx.fillRect(x + 3, yTop + 19, 10, 1);
-      for (let sy = 20; sy <= 26; sy += 2) {
-        // 暗いスリット穴（左右2列）＋ 中央縦リブ
-        ctx.fillStyle = "#181f2b";
-        ctx.fillRect(x + 3, yTop + sy, 4, 1);
-        ctx.fillRect(x + 9, yTop + sy, 4, 1);
-        ctx.fillStyle = "#707f94";
-        ctx.fillRect(x + 7, yTop + sy, 2, 1);
-        // ルーバー横桟
-        ctx.fillStyle = "#8493a8";
-        ctx.fillRect(x + 2, yTop + sy + 1, 12, 1);
-        ctx.fillStyle = "#9aa8bc";
-        ctx.fillRect(x + 2, yTop + sy + 1, 1, 1);
-      }
-      ctx.fillStyle = "#b6c4d6";
-      ctx.fillRect(x + 2, yTop + 28, 12, 1);
-
-      // 6. 下部スカート＆リベット＋ゴム足 (yTop+29 .. yTop+31)
-      ctx.fillStyle = "#8c9aae";
-      ctx.fillRect(x + 1, yTop + 29, 13, 1);
-      ctx.fillStyle = "#2d3644";
-      ctx.fillRect(x + 2, yTop + 29, 1, 1);
-      ctx.fillRect(x + 13, yTop + 29, 1, 1);
-
-      ctx.fillStyle = "#384354";
-      ctx.fillRect(x, yTop + 30, 1, 1);
-      ctx.fillStyle = "#5e6c80";
-      ctx.fillRect(x + 1, yTop + 30, 13, 1);
-      ctx.fillStyle = "#262e3c";
-      ctx.fillRect(x + 14, yTop + 30, 2, 1);
-
-      // 接地のゴム足とアンダー影
-      ctx.fillStyle = "#1b212c";
-      ctx.fillRect(x + 1, yTop + 31, 3, 1);
-      ctx.fillRect(x + 12, yTop + 31, 3, 1);
-      ctx.fillStyle = "#141923";
-      ctx.fillRect(x + 4, yTop + 31, 8, 1);
-
-      // 7. 10秒(600F)に1回、ケース内側からはみ出ない地味なツヤエフェクト
+      // 10秒(600F)に1回、欠けや穴を避けて金属部分のみに走る地味なツヤエフェクト（新3回壁のみ）
       const cycle = ((frame || 0) >>> 0) % 600;
       const shineStart = 582;
       if (cycle >= shineStart) {
         const t = cycle - shineStart; // 0 .. 17 (0.3秒間)
         const diag = -2 + t * 2.2;
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(x + 1, yTop + 9, 14, 21);
-        ctx.clip();
-        ctx.fillStyle = "rgba(240, 248, 255, 0.22)";
-        for (let ry = 0; ry <= 20; ry++) {
+        ctx.fillStyle = "rgba(220, 236, 255, 0.22)";
+        for (let ry = 1; ry <= 21; ry++) {
+          const line = rows[ry];
           const cx = Math.round(diag - ry);
-          ctx.fillRect(x + 1 + cx, yTop + 9 + ry, 2, 1);
+          for (let dx = 0; dx < 2; dx++) {
+            const gx = 1 + cx + dx;
+            if (gx < 1 || gx > 14) continue;
+            const ch = line[gx];
+            if (!ch || ch === "." || ch === "B" || ch === "K") continue;
+            ctx.fillRect(x + gx, yTop + 8 + ry, 1, 1);
+          }
         }
         ctx.restore();
       }
-
-      // 8. 叩かれたときのヒビ割れ（hp=2 -> レベル1、hp<=1 -> レベル2）
-      if (hp === 2) {
-        this.drawServerCracks(ctx, x, yTop, 1);
-      } else if (hp <= 1) {
-        this.drawServerCracks(ctx, x, yTop, 2);
-      }
     },
 
-    drawStainlessWall(ctx, x, yTop, hp) {
-      if (!this.stainlessWallSprites) {
-        this.stainlessWallSprites = {
-          full: bakeTile16x24(STAINLESS_WALL_FULL, STAINLESS_PALETTE),
-          damaged: bakeTile16x24(STAINLESS_WALL_DAMAGED, STAINLESS_PALETTE)
+    drawServerWall(ctx, x, yTop, hp) {
+      if (!this.serverWallSprites) {
+        this.serverWallSprites = {
+          full: bakeTile16x24(SERVER_WALL_FULL, SERVER_PALETTE),
+          damaged: bakeTile16x24(SERVER_WALL_DAMAGED, SERVER_PALETTE)
         };
       }
-      const img = hp <= 1 ? this.stainlessWallSprites.damaged : this.stainlessWallSprites.full;
+      const img = hp <= 1 ? this.serverWallSprites.damaged : this.serverWallSprites.full;
       ctx.drawImage(img, x, yTop + 8);
     },
 
@@ -731,11 +708,11 @@
         // 1回壊せる壁（木箱の中身剥き出しラック）
         this.drawCrateRackWall(ctx, x, yTop);
       } else if (group === 0x10) {
-        // 2回壊せる壁（ステンレスパネル壁）
-        this.drawStainlessWall(ctx, x, yTop, hp);
+        // 新2回壊せる壁（シルバーのサーバー本体・ツヤなし・1回殴りで大破損）
+        this.drawServerWall(ctx, x, yTop, hp);
       } else {
-        // 3回壊せる壁（サーバー本体・シルバーケース）
-        this.drawServerWall(ctx, x, yTop, hp, frame);
+        // 新3回壊せる壁（黒目の硬質ステンレスパネル・10秒ツヤあり・2段階破損）
+        this.drawDarkStainlessWall(ctx, x, yTop, hp, frame);
       }
     },
 
