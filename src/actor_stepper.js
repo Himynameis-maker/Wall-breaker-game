@@ -100,7 +100,8 @@
     }
 
     snapIfContLadderIdle(slot, world) {
-      if (this.isContinuousLadder(slot.row, slot.col, world)) {
+      if (this.isLadderTileForSlot(slot, world.getTile(slot.row, slot.col)) &&
+          this.isContinuousLadder(slot.row, slot.col, world)) {
         this.snapX(slot, world);
       }
     }
