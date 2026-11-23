@@ -1,6 +1,11 @@
 (function (root) {
   "use strict";
 
+  // ハシゴ横棒の調整用（ここを変えるだけで全ハシゴに反映）
+  const LADDER_STEP = 4;          // 横棒1本＋隙間の間隔（ズレない値: 2, 4, 8）
+  const LADDER_BAR_HEIGHT = 1;    // 横棒の明るい部分の太さ
+  const LADDER_SHADOW_HEIGHT = 1; // 横棒の下の影の太さ（0にすると影なし単色）
+
   const G = root.WreckGame || {};
   const LEFT = G.LEFT || 2;
   const TILE = G.TILE || {
@@ -74,16 +79,21 @@
 
     drawSandLadder(ctx, x, yTop, frame) {
       ctx.save();
-      // 半透明の砂色ハシゴ本体（左右柱 x+1 / x+13、4px周期で隙間1px）
+      // 半透明の砂色ハシゴ本体（左右柱 x+1 / x+13）
       ctx.globalAlpha = 0.48;
       ctx.fillStyle = "#9c7e48";
       ctx.fillRect(x + 1, yTop, 2, 32);
       ctx.fillRect(x + 13, yTop, 2, 32);
-      for (let ry = 1; ry < 32; ry += 4) {
-        ctx.fillStyle = "#d8bc7c";
-        ctx.fillRect(x + 2, yTop + ry, 12, 2);
-        ctx.fillStyle = "#846838";
-        ctx.fillRect(x + 2, yTop + ry + 2, 12, 1);
+      const step = Math.max(1, LADDER_STEP);
+      for (let ry = 1; ry < 32; ry += step) {
+        if (LADDER_BAR_HEIGHT > 0) {
+          ctx.fillStyle = "#d8bc7c";
+          ctx.fillRect(x + 2, yTop + ry, 12, LADDER_BAR_HEIGHT);
+        }
+        if (LADDER_SHADOW_HEIGHT > 0) {
+          ctx.fillStyle = "#846838";
+          ctx.fillRect(x + 2, yTop + ry + LADDER_BAR_HEIGHT, 12, LADDER_SHADOW_HEIGHT);
+        }
       }
 
       // ハシゴ幅（x+1 .. x+14）から絶対にはみ出ない控えめな砂嵐エフェクト
@@ -120,13 +130,18 @@
         ctx.fillStyle = sideColor;
         ctx.fillRect(x + 1, yTop + 1, 2, 30);
         ctx.fillRect(x + 13, yTop + 1, 2, 30);
-        for (let ry = 1; ry < 32; ry += 4) {
-          ctx.fillStyle = rungColor;
-          ctx.fillRect(x + 2, yTop + ry, 5, 2);
-          ctx.fillRect(x + 9, yTop + ry, 5, 2);
-          ctx.fillStyle = rungShadow;
-          ctx.fillRect(x + 2, yTop + ry + 2, 5, 1);
-          ctx.fillRect(x + 9, yTop + ry + 2, 5, 1);
+        const step = Math.max(1, LADDER_STEP);
+        for (let ry = 1; ry < 32; ry += step) {
+          if (LADDER_BAR_HEIGHT > 0) {
+            ctx.fillStyle = rungColor;
+            ctx.fillRect(x + 2, yTop + ry, 5, LADDER_BAR_HEIGHT);
+            ctx.fillRect(x + 9, yTop + ry, 5, LADDER_BAR_HEIGHT);
+          }
+          if (LADDER_SHADOW_HEIGHT > 0) {
+            ctx.fillStyle = rungShadow;
+            ctx.fillRect(x + 2, yTop + ry + LADDER_BAR_HEIGHT, 5, LADDER_SHADOW_HEIGHT);
+            ctx.fillRect(x + 9, yTop + ry + LADDER_BAR_HEIGHT, 5, LADDER_SHADOW_HEIGHT);
+          }
         }
       } else if (stage === 3) {
         ctx.fillStyle = sideColor;
@@ -454,15 +469,20 @@
         return;
       }
 
+      const step = Math.max(1, LADDER_STEP);
       if (val === TILE.LADDER) {
         ctx.fillStyle = "#d89040";
         ctx.fillRect(x + 1, yTop, 2, 32);
         ctx.fillRect(x + 13, yTop, 2, 32);
-        for (let ry = 1; ry < 32; ry += 4) {
-          ctx.fillStyle = "#f8c068";
-          ctx.fillRect(x + 2, yTop + ry, 12, 2);
-          ctx.fillStyle = "#b87028";
-          ctx.fillRect(x + 2, yTop + ry + 2, 12, 1);
+        for (let ry = 1; ry < 32; ry += step) {
+          if (LADDER_BAR_HEIGHT > 0) {
+            ctx.fillStyle = "#f8c068";
+            ctx.fillRect(x + 2, yTop + ry, 12, LADDER_BAR_HEIGHT);
+          }
+          if (LADDER_SHADOW_HEIGHT > 0) {
+            ctx.fillStyle = "#b87028";
+            ctx.fillRect(x + 2, yTop + ry + LADDER_BAR_HEIGHT, 12, LADDER_SHADOW_HEIGHT);
+          }
         }
       } else if (val === TILE.SAND_LADDER) {
         this.drawSandLadder(ctx, x, yTop, world.f);
@@ -470,13 +490,17 @@
         ctx.fillStyle = "#b84468";
         ctx.fillRect(x + 1, yTop, 2, 32);
         ctx.fillRect(x + 13, yTop, 2, 32);
-        for (let ry = 1; ry < 32; ry += 4) {
-          ctx.fillStyle = "#ff88a8";
-          ctx.fillRect(x + 2, yTop + ry, 5, 2);
-          ctx.fillRect(x + 9, yTop + ry, 5, 2);
-          ctx.fillStyle = "#a8385c";
-          ctx.fillRect(x + 2, yTop + ry + 2, 5, 1);
-          ctx.fillRect(x + 9, yTop + ry + 2, 5, 1);
+        for (let ry = 1; ry < 32; ry += step) {
+          if (LADDER_BAR_HEIGHT > 0) {
+            ctx.fillStyle = "#ff88a8";
+            ctx.fillRect(x + 2, yTop + ry, 5, LADDER_BAR_HEIGHT);
+            ctx.fillRect(x + 9, yTop + ry, 5, LADDER_BAR_HEIGHT);
+          }
+          if (LADDER_SHADOW_HEIGHT > 0) {
+            ctx.fillStyle = "#a8385c";
+            ctx.fillRect(x + 2, yTop + ry + LADDER_BAR_HEIGHT, 5, LADDER_SHADOW_HEIGHT);
+            ctx.fillRect(x + 9, yTop + ry + LADDER_BAR_HEIGHT, 5, LADDER_SHADOW_HEIGHT);
+          }
         }
       } else if (isCrumblingLadderTile(val)) {
         const info = world.getCrumblingInfo ? world.getCrumblingInfo(Math.floor(yTop / 32), Math.floor(x / 16)) : null;
