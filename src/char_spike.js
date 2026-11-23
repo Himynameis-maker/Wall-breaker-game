@@ -730,26 +730,7 @@
       const faceVal = slot.facing || slot.dir;
       const facing = (faceVal & LEFT) ? "L" : "R";
 
-      if (slot.state === 15 || slot.state === 16) {
-        // ドラム缶閉じ込め（裏側レイヤーでも見えるよう、ドラム缶の蓋 yTop+6 = baseDrawY の上に頭と手を出す）
-        const img = sprites.climbHold_R;
-        if (!img) return;
-        const f = world ? world.f : 0;
-        const phase = (f >> 2) & 1;
-        const headY = slot.state === 15 ? (baseDrawY - 2) : (baseDrawY - 6 + (phase ? -1 : 0));
-        ctx.drawImage(img, 0, 1, 16, 7, baseX, headY, 16, 7);
-        const handY1 = slot.state === 15 ? (baseDrawY - 3) : (baseDrawY - (phase ? 5 : 3));
-        const handY2 = slot.state === 15 ? (baseDrawY - 3) : (baseDrawY - (phase ? 3 : 5));
-        ctx.fillStyle = "#bccae0";
-        ctx.fillRect(baseX + 1, handY1, 2, 3);
-        ctx.fillRect(baseX + 13, handY2, 2, 3);
-        ctx.fillStyle = "#4c576b";
-        ctx.fillRect(baseX + 1, handY1 + 2, 2, 1);
-        ctx.fillRect(baseX + 13, handY2 + 2, 2, 1);
-        if (slot.state === 16) {
-          ctx.fillStyle = phase ? "#ff2424" : "#ffffff";
-          ctx.fillRect(baseX + 7, baseDrawY - 9, 2, 2);
-        }
+     if (slot.state === 15 || slot.state === 16) {
         return;
       }
 
