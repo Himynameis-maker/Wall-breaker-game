@@ -338,40 +338,7 @@
 
       const f = world ? world.f : 0;
 
-      // State 15/16: ドラム缶捕獲待機・閉じ込め状態（蓋上端 baseDrawY の上にモニター上部と両手を出す）
-      if (enemy.state === 15 || enemy.state === 16) {
-        const phase = (f >> 2) & 1;
-        const headImg = sprites.frontStand_R;
-        if (!headImg) return;
-        ctx.save();
-        if (isBack) ctx.globalAlpha = 0.85;
-
-        if (enemy.state === 15) {
-          const headY = baseDrawY - 3;
-          ctx.drawImage(headImg, 0, 4, 16, 3, baseX, headY, 16, 3);
-        } else {
-          const headY = baseDrawY - 7 + (phase ? -1 : 0);
-          ctx.drawImage(headImg, 0, 4, 16, 7, baseX, headY, 16, 7);
-        }
-
-        const armColor = isBack ? (isFast ? "#2e2d48" : "#2c3a58") : (isFast ? "#786674" : "#8a9ab6");
-        const armDark = isBack ? (isFast ? "#1c1d30" : "#1a2338") : (isFast ? "#3a2a36" : "#47536a");
-        const h1 = enemy.state === 15 ? (baseDrawY - 3) : (baseDrawY - (phase ? 5 : 3));
-        const h2 = enemy.state === 15 ? (baseDrawY - 3) : (baseDrawY - (phase ? 3 : 5));
-        ctx.fillStyle = armColor;
-        ctx.fillRect(baseX, h1, 2, 3);
-        ctx.fillRect(baseX + 14, h2, 2, 3);
-        ctx.fillStyle = armDark;
-        ctx.fillRect(baseX, h1 + 2, 2, 1);
-        ctx.fillRect(baseX + 14, h2 + 2, 2, 1);
-
-        if (enemy.state === 16) {
-          ctx.fillStyle = isBack
-            ? "#7084a8"
-            : (isFast ? (phase ? "#ff2a24" : "#ffe08a") : (phase ? "#ffec48" : "#ffffff"));
-          ctx.fillRect(baseX + 7, baseDrawY - 10, 2, 2);
-        }
-        ctx.restore();
+    if (enemy.state === 15 || enemy.state === 16) {
         return;
       }
 
