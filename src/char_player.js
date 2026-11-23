@@ -32,7 +32,7 @@
     B: "#435068"
   };
 
-  // 上半身（腕固定：歩行開始 0.2s = 12F 未満用）
+  // 上半身（腕固定・高い位置 16行：待機・通過コマ・歩き始め 0.2s 未満用）
   const UPPER_ARM_FIXED = [
     "................",
     ".....WWWWWW.....",
@@ -44,17 +44,22 @@
     "....LLWWWWWW....",
     ".....OOOOOO.....",
     "..BBBWWWWWWW....",
-    ".BBBBWWWCWWWW...",
-    ".BBBBWWLCWWWW...",
-    ".BBBBWWLWWWW....",
-    ".BBBLLWLLWWW....",
-    "..BBLWWOOOWW....",
-    "...BBLDWWWWW...."
+    ".BBBBWDDWWCWW...",
+    ".BBBBWDWWDWWW...",
+    ".BBBBWDWWDWWW...",
+    ".BBBLLDWWDWWW...",
+    "..BBLWWDOOWWW...",
+    "...BBLDWWWWWW..."
   ];
 
+  // 上半身（腕固定・1px沈み位置 17行：歩き始め 0.2s 未満の踏み込み用）
+  const UPPER_ARM_FIXED_LOW = ["................"].concat(UPPER_ARM_FIXED);
+
   // 上半身（腕振り4コマ：歩行 0.2s = 12F 以上用）
+  // 0コマ目（1px沈み 17行）：手前腕を前（右）へ振り出し、奥腕は少し後ろへ
   const UPPER_ARM_0 = [
     "................",
+    "................",
     ".....WWWWWW.....",
     "....WWWWWWWW....",
     "...WWWWVVVVVV...",
@@ -64,33 +69,18 @@
     "....LLWWWWWW....",
     ".....OOOOOO.....",
     "..BBBWWWWWWW....",
-    ".BBBBWWWCWWWW...",
-    ".BBBBLLWCWWWP...",
-    ".BBBLLWWWWWPP...",
-    ".BBLLWWWWWWWW...",
-    "..BOOLLLLWWW....",
-    "...OODWWWWWW...."
+    ".BBBBWDDWWCWW...",
+    ".BBBBWDWWWDWW...",
+    ".BBBLLWDWWWDWOO.",
+    "..BBLPWWDDDDOO..",
+    "...PPLWWWWWWW...",
+    "...BBLDWWWWWW..."
   ];
+  // 1コマ目（高い位置 16行）：腕は体側中立
   const UPPER_ARM_1 = UPPER_ARM_FIXED;
+  // 2コマ目（1px沈み 17行）：手前腕を後ろ（左）へ引き、奥腕を前（右）へ振る
   const UPPER_ARM_2 = [
     "................",
-    ".....WWWWWW.....",
-    "....WWWWWWWW....",
-    "...WWWWVVVVVV...",
-    "...WWWVVVVVRRV..",
-    "...WWWVVVVVVVV..",
-    "...LLLWWVVVVVV..",
-    "....LLWWWWWW....",
-    ".....OOOOOO.....",
-    "..BBBWWWWWWW....",
-    ".BBBBWWWCWWWW...",
-    ".BBBBWWWCWLLOO..",
-    ".BBBBWWWWLLLOO..",
-    ".BBBLLWWLLWW....",
-    "..BBLPWWWWWW....",
-    "...BBLDWWWWW...."
-  ];
-  const UPPER_ARM_3 = [
     "................",
     ".....WWWWWW.....",
     "....WWWWWWWW....",
@@ -101,13 +91,15 @@
     "....LLWWWWWW....",
     ".....OOOOOO.....",
     "..BBBWWWWWWW....",
-    ".BBBBWWWCWWWW...",
-    ".BBBBWWLCWWWW...",
-    ".BBBBWWLWWWW....",
-    ".BBBLLWLLWWW....",
-    "..BBLWOOWWWW....",
-    "...BBLDWWWWW...."
+    ".BBBBWDDWWCWW...",
+    ".BBBBWDWWWDWLL..",
+    ".BBBDDWWDWWLLPP.",
+    "..BBDWWDDWWWWPP.",
+    ".OOODWWWWWWWW...",
+    "..OOBLDWWWWWW..."
   ];
+  // 3コマ目（高い位置 16行）：腕は体側中立
+  const UPPER_ARM_3 = UPPER_ARM_FIXED;
 
   const LOWER_IDLE = [
     "....WWWWWWWW....",
@@ -122,54 +114,140 @@
     "....BBBB.BBBB..."
   ];
 
-  // 細かい足運び4コマ
+  // 足運び4コマ（手前足＝白W、奥足＝暗L/D で役割固定。0/2は9行=沈み用、1/3は10行=高い位置用）
   const LOWER_FOOT_0 = [
     "....WWWWWWWW....",
-    "....WWWDWWWW....",
-    "...DDDD..WWWW...",
-    "..DDDD....WWWW..",
-    "..DDD......LLL..",
-    "..DD.......LLL..",
-    "..BB.......DDD..",
-    ".BBB.......BBB..",
-    ".BBB.......BBBB.",
-    "...........BBBB."
+    "....WWWWWLLL....",
+    "...WWWW..LLLL...",
+    "...LLL....DDD...",
+    "...LLL....DDD...",
+    "..DDD......DD...",
+    "..BBB......BBB..",
+    "..BBBB....BBBB..",
+    "..BBBB....BBBB.."
   ];
   const LOWER_FOOT_1 = [
     "....WWWWWWWW....",
-    "....WWWLLWWW....",
-    "....DDDWWWLL....",
-    ".....WWWW.DD....",
-    ".....WWW..BB....",
-    ".....LLL..BBB...",
-    ".....DDD........",
-    ".....BBB........",
-    ".....BBBB.......",
-    ".....BBBB......."
+    "....WWWWWWWW....",
+    "....WWWWLLLL....",
+    "...WWWW.LLLL....",
+    "...LLLL.DDD.....",
+    "..DDDD..DDD.....",
+    "..BBB...BBB.....",
+    "..BBBB..BBB.....",
+    "........BBBB....",
+    "........BBBB...."
   ];
   const LOWER_FOOT_2 = [
     "....WWWWWWWW....",
-    "....WWWWLLWW....",
-    "...WWWW..DDDD...",
-    "..WWWW....DDDD..",
-    "..LLL......DDD..",
-    "..LLL.......DD..",
-    "..DDD.......BB..",
-    "..BBB.......BBB.",
-    "..BBBB......BBB.",
-    "..BBBB.........."
+    "....LLLWWWWW....",
+    "...LLLL..WWWW...",
+    "...DDD....LLL...",
+    "...DDD....LLL...",
+    "..DDD.....DDD...",
+    "..BBB.....BBB...",
+    "..BBBB....BBBB..",
+    "..BBBB....BBBB.."
   ];
   const LOWER_FOOT_3 = [
     "....WWWWWWWW....",
-    "....WWLLWWWW....",
-    "....LLWWWDDD....",
-    "....DD.WWWW.....",
-    "....BB..WWW.....",
-    "...BBB..LLL.....",
-    "........DDD.....",
-    "........BBB.....",
-    ".......BBBB.....",
-    ".......BBBB....."
+    "....WWWWWWWW....",
+    "....LLLLWWWW....",
+    "...LLLL.WWWW....",
+    "...DDD..LLLL....",
+    "..DDD...DDD.....",
+    "..BBB...BBB.....",
+    "..BBBB..BBB.....",
+    "........BBBB....",
+    "........BBBB...."
+  ];
+
+  // 着地スタン（State 11：19F）用：尻もち ＋ 2段階起き上がり
+  const ASTRO_SIT = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "....WWWWWW......",
+    "...WWWWWWWW.....",
+    "..WWWWVVVVVV....",
+    "..WWWVVVVVRRV...",
+    "..WWWVVVVVVVV...",
+    "..LLLWWVVVVVV...",
+    "...LLWWWWWW.....",
+    "....OOOOOO......",
+    ".BBBWWWWWWW.....",
+    "BBBBWWWCWWWW....",
+    "BBBBWDDWWWWWW...",
+    "BBBLLWDWWWOO....",
+    ".BBLWWWWWWWWWW..",
+    "..DDWWWWWWWLLL..",
+    "...WWWWWWLLLDDD.",
+    "...DDDDDDDBBBBB.",
+    "....BBBBBBBBBBB."
+  ];
+
+  const ASTRO_RECOVER_0 = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW....",
+    ".BBBBWWWCWWWW...",
+    ".BBBBWDDWWWWW...",
+    ".BBBLLWDWWWW....",
+    "..BBLWWDDWWWW...",
+    "...BBLDWWWOO....",
+    "....WWWWWWWW....",
+    "...WWWW..WWWW...",
+    "...LLL....LLL...",
+    "...DDD....DDD...",
+    "...BBB....BBB...",
+    "..BBBB....BBBB..",
+    "..BBBB....BBBB.."
+  ];
+
+  const ASTRO_RECOVER_1 = [
+    "................",
+    "................",
+    "................",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    "...WWWWVVVVVV...",
+    "...WWWVVVVVRRV..",
+    "...WWWVVVVVVVV..",
+    "...LLLWWVVVVVV..",
+    "....LLWWWWWW....",
+    ".....OOOOOO.....",
+    "..BBBWWWWWWW....",
+    ".BBBBWWWCWWWW...",
+    ".BBBBWDDWWWWW...",
+    ".BBBLLWDWWWWW...",
+    "..BBLWWDOOWWW...",
+    "...BBLDWWWWWW...",
+    "....WWWWWWWW....",
+    "....WWW..WWW....",
+    "...LLLL..LLLL...",
+    "...DDD....DDD...",
+    "...DDD....DDD...",
+    "...BBB....BBB...",
+    "...BBB....BBB...",
+    "..BBBB....BBBB..",
+    "..BBBB....BBBB.."
   ];
 
   // はしご（後ろ姿）
@@ -391,14 +469,17 @@
       this.playerSprites = makeSpriteSet(
         {
           idle: UPPER_ARM_FIXED.concat(LOWER_IDLE),
-          foot0: UPPER_ARM_FIXED.concat(LOWER_FOOT_0),
+          foot0: UPPER_ARM_FIXED_LOW.concat(LOWER_FOOT_0),
           foot1: UPPER_ARM_FIXED.concat(LOWER_FOOT_1),
-          foot2: UPPER_ARM_FIXED.concat(LOWER_FOOT_2),
+          foot2: UPPER_ARM_FIXED_LOW.concat(LOWER_FOOT_2),
           foot3: UPPER_ARM_FIXED.concat(LOWER_FOOT_3),
           walk0: UPPER_ARM_0.concat(LOWER_FOOT_0),
           walk1: UPPER_ARM_1.concat(LOWER_FOOT_1),
           walk2: UPPER_ARM_2.concat(LOWER_FOOT_2),
           walk3: UPPER_ARM_3.concat(LOWER_FOOT_3),
+          sit: ASTRO_SIT,
+          recover0: ASTRO_RECOVER_0,
+          recover1: ASTRO_RECOVER_1,
           climbHold: ASTRO_CLIMB_HOLD,
           climbL: ASTRO_CLIMB_L,
           climbR: ASTRO_CLIMB_R,
@@ -667,20 +748,47 @@
       }
 
       if (slot.state === 11) {
-        const img = sprites["idle_" + facing];
+        const st = slot.stunTimer != null ? slot.stunTimer : 0;
+        let poseKey = "recover1";
+        let hammerOffsetX = 0;
+        let hammerOffsetY = 2;
+
+        if (st >= 10) {
+          poseKey = "sit";
+          hammerOffsetX = (faceVal & LEFT) ? 1 : -1;
+          hammerOffsetY = 8;
+        } else if (st >= 5) {
+          poseKey = "recover0";
+          hammerOffsetY = 4;
+        } else {
+          poseKey = "recover1";
+          hammerOffsetY = 2;
+        }
+
+        const img = sprites[poseKey + "_" + facing] || sprites["idle_" + facing];
         if (!img) return;
-        const f = world ? world.f : 0;
-        const shakeX = ((f >> 1) & 1) ? 1 : -1;
-        const drawX = baseX + shakeX;
-        const stunY = baseDrawY + 2;
-        ctx.drawImage(img, drawX, stunY);
-        this.drawPlayerBackHammer(drawX, stunY, faceVal, "side");
-        const sx1 = baseX + 7 + Math.round(Math.cos(f * 0.35) * 5);
-        const sx2 = baseX + 7 + Math.round(Math.cos(f * 0.35 + Math.PI) * 5);
-        ctx.fillStyle = "#ffec48";
-        ctx.fillRect(sx1, baseDrawY - 3, 2, 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(sx2, baseDrawY - 1, 2, 2);
+        ctx.drawImage(img, baseX, baseDrawY);
+        this.drawPlayerBackHammer(baseX + hammerOffsetX, baseDrawY + hammerOffsetY, faceVal, "side");
+
+        // 尻もち直後の着地衝撃エフェクト（最初の6F間）
+        if (st >= 14) {
+          const isBurst = st >= 17;
+          ctx.fillStyle = "#ffffff";
+          if (isBurst) {
+            ctx.fillRect(baseX - 2, baseDrawY + 23, 2, 1);
+            ctx.fillRect(baseX - 1, baseDrawY + 24, 2, 1);
+            ctx.fillRect(baseX + 16, baseDrawY + 23, 2, 1);
+            ctx.fillRect(baseX + 15, baseDrawY + 24, 2, 1);
+            ctx.fillStyle = "#9ad8ff";
+            ctx.fillRect(baseX - 3, baseDrawY + 22, 1, 1);
+            ctx.fillRect(baseX + 18, baseDrawY + 22, 1, 1);
+          } else {
+            ctx.fillRect(baseX - 3, baseDrawY + 22, 1, 1);
+            ctx.fillRect(baseX - 2, baseDrawY + 25, 1, 1);
+            ctx.fillRect(baseX + 18, baseDrawY + 22, 1, 1);
+            ctx.fillRect(baseX + 17, baseDrawY + 25, 1, 1);
+          }
+        }
         return;
       }
 
@@ -721,20 +829,25 @@
       }
 
       let poseKey = "idle";
+      let stepOffsetY = 0;
       if (slot.state === 5) {
         poseKey = "fall";
       } else if (slot.state === 8 || slot.state === 9) {
         poseKey = "walk2";
+        stepOffsetY = 1;
       } else if (slot.state === 1) {
         const wf = slot.walkFrames || 0;
         const step = Math.floor(wf / WALK_STEP_FRAMES) & 3;
         poseKey = (wf >= ARM_DELAY_FRAMES ? "walk" : "foot") + step;
+        if (step === 0 || step === 2) {
+          stepOffsetY = 1;
+        }
       }
 
       const img = sprites[poseKey + "_" + facing] || sprites["idle_" + facing];
       if (!img) return;
       ctx.drawImage(img, baseX, baseDrawY);
-      this.drawPlayerBackHammer(baseX, baseDrawY, faceVal, "side");
+      this.drawPlayerBackHammer(baseX, baseDrawY + stepOffsetY, faceVal, "side");
     },
 
     drawPlayer(slot, worldWidth, world) {
