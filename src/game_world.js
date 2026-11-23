@@ -80,6 +80,13 @@
       this.clearPhase = 0; // 0:通常, 1:壊しきり後0.6s動作中(無敵), 2:全員停止＆3.0s待機
       this.clearTimer = 0;
       this.clearFinished = false;
+      this.nextTrapOrder = 1;
+      this.tryAgainActive = false;
+      this.tryAgainPhase = 0; // 0:通常, 1:曲遅くなり待機(3.0s), 2:文字＆黒幕降下(2.0s), 3:真っ黒余韻(2.0s)
+      this.tryAgainTimer = 0;
+      this.tryAgainFinished = false;
+      this.musicTempoRate = 1.0;
+      this.onMusicSlowDown = typeof config.onMusicSlowDown === "function" ? config.onMusicSlowDown : null;
       this.allBackStop = false;
       this.allBackTimer = 0;
       this.allBackDone = false;
@@ -322,6 +329,29 @@
       if (row < 0 || row >= this.rows) return TILE.EMPTY;
       const wc = this.wrapCol(col);
       return this.tiles[row * this.cols + wc];
+    }
+
+    getDrumTrappedActor(row, col) {
+      const wc = this.wrapCol(col);
+      let best = null;
+      let bestOrder = -1;
+      const checkSlot = (slot) => {
+        if (!slot || slot.state !== 16) return;
+        if (slot.row !== row || slot.col !== wc) return;
+        const ord = slot.trapOrder || 0;
+        if (ord >= bestOrder) {
+          bestOrder = ord;
+          best = slot;
+        }
+      };
+      checkSlot(this.mario);
+      checkSlot(this.spike);
+      if (this.enemies) {
+        for (let i = 0; i < this.enemies.length; i++) {
+          checkSlot(this.enemies[i]);
+        }
+      }
+      return best;
     }
 
     countBreakables() {
@@ -928,7 +958,7 @@
     }
 
     startMarioDeath() {
-      if (this.marioDead || this.stageCleared) return;
+      if (this.marioDead || this.stageCleared || this.tryAgainActive) return;
       this.marioDead = true;
       this.deathPhase = 1;
       this.deathTimer = 0;
@@ -980,13 +1010,63 @@
     }
 
     startStageClear() {
-      if (this.stageCleared || this.marioDead) return;
+      if (this.stageCleared || this.marioDead || this.tryAgainActive) return;
       this.stageCleared = true;
       this.clearPhase = 1;
       this.clearTimer = 0;
       this.clearFinished = false;
       this.marioHitEnemy = false;
       this.marioHitFireball = false;
+      if (this.mario.state === 15 || this.mario.state === 16) {
+        this.mario.flag |= 2;
+        this.mario.y = this.mario.row * 32 + 0x0b;
+        this.mario.topY = this.mario.y;
+        this.mario.state = 0;
+        this.mario.prom = 0;
+        this.stepper.updateCR(this.mario, this);
+      }
+    }
+
+    startTryAgain() {
+      if (this.tryAgainActive || this.marioDead || this.stageCleared) return;
+      this.tryAgainActive = true;
+      this.tryAgainPhase = 1;
+      this.tryAgainTimer = 0;
+      this.tryAgainFinished = false;
+      this.startBannerTimer = 0;
+      this.musicTempoRate = 0.6;
+      if (this.onMusicSlowDown) {
+        this.onMusicSlowDown(this.musicTempoRate);
+      }
+    }
+
+    updateTryAgain() {
+      if (!this.tryAgainActive || this.tryAgainFinished) return;
+
+      if (this.tryAgainPhase === 1) {
+        this.tryAgainTimer += 1;
+        if (this.tryAgainTimer >= 180) {
+          this.tryAgainPhase = 2;
+          this.tryAgainTimer = 0;
+        }
+        return;
+      }
+
+      if (this.tryAgainPhase === 2) {
+        this.tryAgainTimer += 1;
+        if (this.tryAgainTimer >= 120) {
+          this.tryAgainPhase = 3;
+          this.tryAgainTimer = 0;
+        }
+        return;
+      }
+
+      if (this.tryAgainPhase === 3) {
+        this.tryAgainTimer += 1;
+        if (this.tryAgainTimer >= 120) {
+          this.tryAgainFinished = true;
+        }
+      }
     }
 
     // ROM $D50B〜$D57E + $D58A 準拠: 同陣営ザコ敵同士（表同士・裏同士）の接触判定
@@ -1112,6 +1192,10 @@
         return;
       }
 
+      if (this.tryAgainActive) {
+        this.updateTryAgain();
+      }
+
       if (this.startBannerTimer > 0) {
         this.startBannerTimer -= 1;
       }
@@ -1128,7 +1212,7 @@
       } else {
         this.mario.walkFrames = 0;
       }
-      if (!this.stageCleared && this.isStageClearConditionMet()) {
+      if (!this.stageCleared && !this.tryAgainActive && this.isStageClearConditionMet()) {
         this.startStageClear();
       }
 
@@ -1152,7 +1236,7 @@
 
       this.updateEffectsAndWaves();
 
-      if (!this.stageCleared && this.isStageClearConditionMet()) {
+      if (!this.stageCleared && !this.tryAgainActive && this.isStageClearConditionMet()) {
         this.startStageClear();
       }
 
@@ -1173,10 +1257,16 @@
         return;
       }
 
-      this.updateMarioEnemyHit();
-      if (this.marioHitEnemy) {
-        this.startMarioDeath();
-        return;
+      if (!this.tryAgainActive && this.mario.state === 16) {
+        this.startTryAgain();
+      }
+
+      if (!this.tryAgainActive) {
+        this.updateMarioEnemyHit();
+        if (this.marioHitEnemy) {
+          this.startMarioDeath();
+          return;
+        }
       }
       this.f += 1;
     }
