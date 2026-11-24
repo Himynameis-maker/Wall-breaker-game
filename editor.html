@@ -279,7 +279,7 @@
             <option value="">サンプルを読込...</option>
             <option value="__blank__">まっさら初期化</option>
           </select>
-          <button id="clearTilesBtn" class="danger-btn" type="button">モノだけ消す</button>
+          <button id="clearTilesBtn" class="danger-btn" type="button">完全クリア</button>
         </div>
       </div>
 
@@ -356,7 +356,7 @@
       </div>
 
       <div id="actorListRow" class="sub-opts">
-        <span>配置中の敵・親方:</span>
+        <span>配置中の敵:</span>
         <div id="actorChips" class="actor-chips"></div>
       </div>
     </div>
@@ -615,7 +615,8 @@
           if (s && s.enabled) {
             enabledCount += 1;
             const tg = E.countClearTargets(s);
-            label += " ★(壁" + tg + "/敵" + s.enemies.length + ")";
+            const mobCount = s.enemies.length + (s.spike ? 1 : 0);
+            label += " ★(壁" + tg + "/敵" + mobCount + ")";
           } else {
             label += " (未作成)";
           }
@@ -652,84 +653,86 @@
         const targets = E.countClearTargets(data);
         const targetWarn = targets === 0 ? "（0個だと即クリア）" : "";
         const stateTag = data.enabled ? "作成済" : "未作成";
-        stageSummary.textContent = stateTag + " | 壊す対象: " + targets + "個" + targetWarn + " / 敵: " + data.enemies.length + "体";
+        const mobCount = data.enemies.length + (data.spike ? 1 : 0);
+        stageSummary.textContent = stateTag + " | 壊す対象: " + targets + "個" + targetWarn + " / 敵: " + mobCount + "体";
 
-        // 配置中の親方・ザコ敵チップ更新
+        // 配置中の敵チップ更新（親方も他の敵と同じモブとして表示）
         actorChips.innerHTML = "";
-        if (data.spike) {
-          const spWrap = document.createElement("span");
-          spWrap.className = "actor-chip";
-          const spTxt = document.createElement("span");
-          spTxt.textContent = "親方(" + data.spike.row + "," + data.spike.col + ")";
-          const spDir = document.createElement("button");
-          spDir.type = "button";
-          spDir.textContent = data.spike.dir === LEFT ? "←" : "→";
-          spDir.title = "親方の向き反転";
-          spDir.addEventListener("click", () => {
-            pushUndo();
-            data.spike.dir = data.spike.dir === LEFT ? RIGHT : LEFT;
-            data.enabled = true;
-            saveSlots();
-            refreshAllEdit();
-          });
-          const spDel = document.createElement("button");
-          spDel.type = "button";
-          spDel.className = "danger-btn";
-          spDel.textContent = "×";
-          spDel.title = "親方を消す";
-          spDel.addEventListener("click", () => {
-            pushUndo();
-            data.spike = null;
-            data.enabled = true;
-            saveSlots();
-            showStatus("親方を消しました");
-            refreshAllEdit();
-          });
-          spWrap.appendChild(spTxt);
-          spWrap.appendChild(spDir);
-          spWrap.appendChild(spDel);
-          actorChips.appendChild(spWrap);
+        if (mobCount === 0) {
+          const emptyChip = document.createElement("span");
+          emptyChip.className = "actor-chip off";
+          emptyChip.textContent = "なし";
+          actorChips.appendChild(emptyChip);
         } else {
-          const offChip = document.createElement("span");
-          offChip.className = "actor-chip off";
-          offChip.textContent = "親方: なし";
-          actorChips.appendChild(offChip);
-        }
+          if (data.spike) {
+            const spWrap = document.createElement("span");
+            spWrap.className = "actor-chip";
+            const spTxt = document.createElement("span");
+            spTxt.textContent = "親(" + data.spike.row + "," + data.spike.col + ")";
+            const spDir = document.createElement("button");
+            spDir.type = "button";
+            spDir.textContent = data.spike.dir === LEFT ? "←" : "→";
+            spDir.title = "向き反転";
+            spDir.addEventListener("click", () => {
+              pushUndo();
+              data.spike.dir = data.spike.dir === LEFT ? RIGHT : LEFT;
+              data.enabled = true;
+              saveSlots();
+              refreshAllEdit();
+            });
+            const spDel = document.createElement("button");
+            spDel.type = "button";
+            spDel.className = "danger-btn";
+            spDel.textContent = "×";
+            spDel.title = "削除";
+            spDel.addEventListener("click", () => {
+              pushUndo();
+              data.spike = null;
+              data.enabled = true;
+              saveSlots();
+              refreshAllEdit();
+            });
+            spWrap.appendChild(spTxt);
+            spWrap.appendChild(spDir);
+            spWrap.appendChild(spDel);
+            actorChips.appendChild(spWrap);
+          }
 
-        data.enemies.forEach((e, idx) => {
-          const wrap = document.createElement("span");
-          wrap.className = "actor-chip";
-          const label = e.enemyType === "eggplant" ? "緑" : (e.enemyType === "spanagonFast" ? "赤" : "黄");
-          const txt = document.createElement("span");
-          txt.textContent = label + "(" + e.row + "," + e.col + ")";
-          const dirBtn = document.createElement("button");
-          dirBtn.type = "button";
-          dirBtn.textContent = e.dir === LEFT ? "←" : "→";
-          dirBtn.title = "向き反転";
-          dirBtn.addEventListener("click", () => {
-            pushUndo();
-            e.dir = e.dir === LEFT ? RIGHT : LEFT;
-            data.enabled = true;
-            saveSlots();
-            refreshAllEdit();
+          data.enemies.forEach((e, idx) => {
+            const wrap = document.createElement("span");
+            wrap.className = "actor-chip";
+            const label = e.enemyType === "eggplant" ? "緑" : (e.enemyType === "spanagonFast" ? "赤" : "黄");
+            const txt = document.createElement("span");
+            txt.textContent = label + "(" + e.row + "," + e.col + ")";
+            const dirBtn = document.createElement("button");
+            dirBtn.type = "button";
+            dirBtn.textContent = e.dir === LEFT ? "←" : "→";
+            dirBtn.title = "向き反転";
+            dirBtn.addEventListener("click", () => {
+              pushUndo();
+              e.dir = e.dir === LEFT ? RIGHT : LEFT;
+              data.enabled = true;
+              saveSlots();
+              refreshAllEdit();
+            });
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "danger-btn";
+            delBtn.textContent = "×";
+            delBtn.title = "削除";
+            delBtn.addEventListener("click", () => {
+              pushUndo();
+              data.enemies.splice(idx, 1);
+              data.enabled = true;
+              saveSlots();
+              refreshAllEdit();
+            });
+            wrap.appendChild(txt);
+            wrap.appendChild(dirBtn);
+            wrap.appendChild(delBtn);
+            actorChips.appendChild(wrap);
           });
-          const delBtn = document.createElement("button");
-          delBtn.type = "button";
-          delBtn.className = "danger-btn";
-          delBtn.textContent = "×";
-          delBtn.title = "削除";
-          delBtn.addEventListener("click", () => {
-            pushUndo();
-            data.enemies.splice(idx, 1);
-            data.enabled = true;
-            saveSlots();
-            refreshAllEdit();
-          });
-          wrap.appendChild(txt);
-          wrap.appendChild(dirBtn);
-          wrap.appendChild(delBtn);
-          actorChips.appendChild(wrap);
-        });
+        }
       }
 
       function renderEditCanvas() {
@@ -932,7 +935,7 @@
         refreshAllEdit();
       });
 
-      // サンプル読込 / モノ消去
+      // サンプル読込 / 完全クリア
       sampleSelect.addEventListener("change", () => {
         const val = sampleSelect.value;
         if (!val) return;
@@ -955,12 +958,9 @@
 
       clearTilesBtn.addEventListener("click", () => {
         pushUndo();
-        currentData().tiles = [];
-        currentData().timedBombs = [];
-        currentData().enemies = [];
-        currentData().enabled = true;
+        E.clearStageCompletely(currentData());
         saveSlots();
-        showStatus("壁・ギミック・敵をすべて消去しました");
+        showStatus("穴・壁・敵・親方をすべて消去しました（↩で戻せます）");
         refreshAllEdit();
       });
 
