@@ -32,8 +32,9 @@
     return true;
   };
 
-  const STORAGE_KEY = "wreck_stage_editor_slots_v1";
-  const MAX_ENEMIES = 7;
+  const STORAGE_KEY = "wreck_stage_editor_slots_v2";
+  const TOTAL_SLOTS = 50;
+  const MAX_ENEMIES = null;
 
   const EDITOR_TOOLS = [
     { id: "erase", label: "床 (消す)", group: "terrain", kind: "erase", desc: "穴を埋めて床に戻し、置いたモノ・親方・敵を消します" },
@@ -74,11 +75,29 @@
     return fallback;
   }
 
+  function pad2(n) {
+    return n < 10 ? ("0" + n) : String(n);
+  }
+
+  function getRangeForSlot(slotIdx) {
+    const num = clampInt(slotIdx, 0, TOTAL_SLOTS - 1, 0) + 1;
+    const startNum = Math.floor((num - 1) / 10) * 10 + 1;
+    const endNum = Math.min(TOTAL_SLOTS, startNum + 9);
+    const shortName = "stages_" + pad2(startNum) + "_" + pad2(endNum) + ".js";
+    return {
+      startNum,
+      endNum,
+      shortName,
+      fileName: "data/" + shortName
+    };
+  }
+
   function createBlankStage(cols = 20, rows = 8, slotIdx = 0) {
     const c = clampInt(cols, 14, 24, 20);
     const r = clampInt(rows, 6, 10, 8);
     return {
-      name: "お試しステージ " + (slotIdx + 1),
+      name: "STAGE " + (slotIdx + 1),
+      enabled: false,
       cols: c,
       rows: r,
       tiles: [],
@@ -92,7 +111,8 @@
 
   function cloneStageData(data) {
     return {
-      name: String(data.name || "ステージ"),
+      name: String(data.name || "STAGE"),
+      enabled: !!data.enabled,
       cols: data.cols,
       rows: data.rows,
       tiles: (data.tiles || []).map(t => ({ row: t.row, col: t.col, tile: t.tile })),
@@ -124,12 +144,15 @@
     return false;
   }
 
-  function findNearestFreeCell(data, startRow, startCol, drumSet) {
+  function findNearestFreeCell(data, startRow, startCol, drumSet, occupiedSet) {
     let best = null;
     let bestDist = Infinity;
     for (let r = 0; r < data.rows; r++) {
       for (let c = 0; c < data.cols; c++) {
-        if (drumSet.has(keyOf(r, c))) continue;
+        if (isEdgeSafeCol(c, data.cols)) continue;
+        const k = keyOf(r, c);
+        if (drumSet && drumSet.has(k)) continue;
+        if (occupiedSet && occupiedSet.has(k)) continue;
         const dist = Math.abs(r - startRow) * 2 + Math.abs(c - startCol);
         if (dist < bestDist) {
           bestDist = dist;
@@ -149,6 +172,7 @@
     if (!raw || typeof raw !== "object") return base;
 
     if (raw.name) base.name = String(raw.name);
+    base.enabled = raw.enabled === undefined ? true : !!raw.enabled;
     const cols = base.cols;
     const rows = base.rows;
 
@@ -184,6 +208,7 @@
         const r = clampInt(tb.row, -1, rows, -1);
         const c = clampInt(tb.col, -1, cols, -1);
         if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+        if (isEdgeSafeCol(c, cols)) continue;
         tbSecMap.set(keyOf(r, c), normalizeTimedSec(tb.sec));
       }
     }
@@ -225,8 +250,8 @@
     }
 
     base.mario = parseActorPos(raw.mario, base.mario, RIGHT);
-    if (drumSet.has(keyOf(base.mario.row, base.mario.col))) {
-      const free = findNearestFreeCell(base, base.mario.row, base.mario.col, drumSet);
+    if (isEdgeSafeCol(base.mario.col, cols) || drumSet.has(keyOf(base.mario.row, base.mario.col))) {
+      const free = findNearestFreeCell(base, base.mario.row, base.mario.col, drumSet, null);
       if (free) {
         base.mario.row = free.row;
         base.mario.col = free.col;
@@ -237,8 +262,8 @@
       base.spike = null;
     } else {
       base.spike = parseActorPos(raw.spike, base.spike, LEFT);
-      if (drumSet.has(keyOf(base.spike.row, base.spike.col))) {
-        const free = findNearestFreeCell(base, base.spike.row, base.spike.col, drumSet);
+      if (isEdgeSafeCol(base.spike.col, cols) || drumSet.has(keyOf(base.spike.row, base.spike.col))) {
+        const free = findNearestFreeCell(base, base.spike.row, base.spike.col, drumSet, null);
         if (free) {
           base.spike.row = free.row;
           base.spike.col = free.col;
@@ -250,15 +275,13 @@
     const seenEnemy = new Set();
     if (Array.isArray(raw.enemies)) {
       for (let i = 0; i < raw.enemies.length; i++) {
-        if (enemyList.length >= MAX_ENEMIES) break;
         const e = raw.enemies[i];
         if (!e || typeof e !== "object") continue;
         const type = (e.enemyType === "spanagonFast" || e.enemyType === "eggplant") ? e.enemyType : "spanagon";
         const pos = parseActorPos(e, { row: rows - 1, col: Math.min(cols - 3, 8) }, LEFT);
         const k = keyOf(pos.row, pos.col);
-        if (seenEnemy.has(k)) continue;
-        if (drumSet.has(k)) {
-          const free = findNearestFreeCell(base, pos.row, pos.col, drumSet);
+        if (isEdgeSafeCol(pos.col, cols) || drumSet.has(k) || seenEnemy.has(k)) {
+          const free = findNearestFreeCell(base, pos.row, pos.col, drumSet, seenEnemy);
           if (!free) continue;
           pos.row = free.row;
           pos.col = free.col;
@@ -289,6 +312,7 @@
 
   function resizeStageData(data, newCols, newRows) {
     const copy = cloneStageData(data);
+    copy.enabled = true;
     copy.cols = clampInt(newCols, 14, 24, data.cols);
     copy.rows = clampInt(newRows, 6, 10, data.rows);
     return normalizeStageData(copy);
@@ -373,6 +397,9 @@
       changed = true;
     }
 
+    if (changed) {
+      data.enabled = true;
+    }
     return { ok: true, changed };
   }
 
@@ -405,6 +432,9 @@
       }
       const tileRes = setTileAt(data, row, col, TILE.EMPTY, timedSec);
       const anyChanged = removedEnemy || removedSpike || tileRes.changed;
+      if (anyChanged) {
+        data.enabled = true;
+      }
       return {
         ok: true,
         changed: anyChanged,
@@ -420,6 +450,10 @@
       return { ok: true, changed: false };
     }
 
+    if (isEdgeSafeCol(col, data.cols)) {
+      return { ok: false, changed: false, message: "両端2列は通路専用のためキャラも置けません" };
+    }
+
     if (getTileAt(data, row, col) === TILE.DRUM) {
       return { ok: false, changed: false, message: "ドラム缶の上にはキャラを置けません" };
     }
@@ -427,18 +461,22 @@
     if (tool.id === "mario") {
       if (data.mario.row === row && data.mario.col === col) {
         data.mario.dir = data.mario.dir === RIGHT ? LEFT : RIGHT;
+        data.enabled = true;
         return { ok: true, changed: true, message: "主人公の向きを反転しました" };
       }
       data.mario = { row, col, dir: normalizeDir(opts.actorDir, RIGHT) };
+      data.enabled = true;
       return { ok: true, changed: true, message: "主人公を配置しました" };
     }
 
     if (tool.id === "spike") {
       if (data.spike && data.spike.row === row && data.spike.col === col) {
         data.spike.dir = data.spike.dir === RIGHT ? LEFT : RIGHT;
+        data.enabled = true;
         return { ok: true, changed: true, message: "親方の向きを反転しました" };
       }
       data.spike = { row, col, dir: actorDir };
+      data.enabled = true;
       return { ok: true, changed: true, message: "親方を配置しました" };
     }
 
@@ -447,14 +485,13 @@
       if (idx >= 0) {
         if (data.enemies[idx].enemyType === tool.enemyType) {
           data.enemies[idx].dir = data.enemies[idx].dir === RIGHT ? LEFT : RIGHT;
+          data.enabled = true;
           return { ok: true, changed: true, message: tool.label + "の向きを反転しました" };
         }
         data.enemies[idx].enemyType = tool.enemyType;
         data.enemies[idx].dir = actorDir;
+        data.enabled = true;
         return { ok: true, changed: true, message: tool.label + "に変更しました" };
-      }
-      if (data.enemies.length >= MAX_ENEMIES) {
-        return { ok: false, changed: false, message: "ザコ敵は最大" + MAX_ENEMIES + "体まで配置できます" };
       }
       data.enemies.push({
         enemyType: tool.enemyType,
@@ -462,6 +499,7 @@
         col,
         dir: actorDir
       });
+      data.enabled = true;
       return { ok: true, changed: true, message: tool.label + "を配置しました" };
     }
 
@@ -594,24 +632,129 @@
     return JSON.stringify(out);
   }
 
-  function loadSlotsFromStorage() {
-    const slots = [
-      createBlankStage(20, 8, 0),
-      createBlankStage(20, 8, 1),
-      createBlankStage(20, 8, 2)
+  function exportSingleStageJSON(data, stageNumber = 1) {
+    return JSON.stringify(toWorldConfig(normalizeStageData(data, stageNumber - 1), { stageNumber }));
+  }
+
+  function exportRangeFileJS(slots, startNum, endNum) {
+    const entries = [];
+    for (let num = startNum; num <= endNum; num++) {
+      const slot = slots[num - 1];
+      if (!slot || !slot.enabled) continue;
+      const norm = normalizeStageData(slot, num - 1);
+      const cfg = toWorldConfig(norm, { stageNumber: num });
+      entries.push('    "' + num + '": ' + JSON.stringify(cfg));
+    }
+
+    const lines = [
+      "(function (root) {",
+      '  "use strict";',
+      "  const NS = root.WreckNormalStages = root.WreckNormalStages || {};",
+      "  Object.assign(NS, {"
     ];
+    if (entries.length > 0) {
+      lines.push(entries.join(",\n"));
+    } else {
+      lines.push("    // ステージ " + startNum + "〜" + endNum + "（まだ作成されたステージがありません）");
+    }
+    lines.push("  });");
+    lines.push('  if (typeof module !== "undefined" && module.exports) {');
+    lines.push("    module.exports = NS;");
+    lines.push("  }");
+    lines.push('})(typeof globalThis !== "undefined" ? globalThis : window);');
+    return lines.join("\n");
+  }
+
+  function parseImportText(text) {
+    const trimmed = String(text || "").trim();
+    if (!trimmed) return null;
+
     try {
-      if (!root.localStorage) return slots;
-      const raw = root.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return slots;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return slots;
-      for (let i = 0; i < 3; i++) {
-        if (parsed[i]) {
-          slots[i] = normalizeStageData(parsed[i], i);
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") {
+        if (parsed.demo1 || parsed.demo2 || parsed.demo3) {
+          return { kind: "bundle3", obj: parsed };
+        }
+        const keys = Object.keys(parsed);
+        const numericKeys = keys.filter(k => /^\d+$/.test(k) && parsed[k] && typeof parsed[k] === "object");
+        if (numericKeys.length > 0) {
+          return { kind: "numberedMap", map: parsed };
+        }
+        return { kind: "single", item: parsed };
+      }
+    } catch (_) {}
+
+    // stages_XX_YY.js 形式テキスト（"番号": { ... } 行）の読み取り
+    const map = {};
+    let found = 0;
+    const rawLines = trimmed.split(/\r?\n/);
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i].trim();
+      const m = line.match(/^"?(\d+)"?\s*:\s*(\{.*\})\s*,?\s*$/);
+      if (!m) continue;
+      try {
+        const obj = JSON.parse(m[2]);
+        if (obj && typeof obj === "object") {
+          map[m[1]] = obj;
+          found += 1;
+        }
+      } catch (_) {}
+    }
+    if (found > 0) {
+      return { kind: "numberedMap", map };
+    }
+    return null;
+  }
+
+  function loadFromNormalStage(slots, slotIdx) {
+    const NS = root.WreckNormalStages || {};
+    const num = slotIdx + 1;
+    const cfg = NS[num] || NS[String(num)];
+    if (!cfg || typeof cfg !== "object") return false;
+    const norm = normalizeStageData(cfg, slotIdx);
+    norm.enabled = true;
+    slots[slotIdx] = norm;
+    return true;
+  }
+
+  function syncMissingFromNormalStages(slots) {
+    const NS = root.WreckNormalStages || {};
+    let count = 0;
+    for (let i = 0; i < TOTAL_SLOTS; i++) {
+      if (slots[i] && slots[i].enabled) continue;
+      const num = i + 1;
+      const cfg = NS[num] || NS[String(num)];
+      if (cfg && typeof cfg === "object") {
+        const norm = normalizeStageData(cfg, i);
+        norm.enabled = true;
+        slots[i] = norm;
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  function loadSlotsFromStorage() {
+    const slots = [];
+    for (let i = 0; i < TOTAL_SLOTS; i++) {
+      slots.push(createBlankStage(20, 8, i));
+    }
+    try {
+      if (root.localStorage) {
+        const raw = root.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            for (let i = 0; i < Math.min(TOTAL_SLOTS, parsed.length); i++) {
+              if (parsed[i]) {
+                slots[i] = normalizeStageData(parsed[i], i);
+              }
+            }
+          }
         }
       }
     } catch (_) {}
+    syncMissingFromNormalStages(slots);
     return slots;
   }
 
@@ -730,7 +873,9 @@
 
   const api = {
     EDITOR_TOOLS,
+    TOTAL_SLOTS,
     MAX_ENEMIES,
+    getRangeForSlot,
     createBlankStage,
     cloneStageData,
     normalizeStageData,
@@ -743,6 +888,11 @@
     toWorldConfig,
     formatSingleStageJS,
     exportThreeStagesBundle,
+    exportSingleStageJSON,
+    exportRangeFileJS,
+    parseImportText,
+    loadFromNormalStage,
+    syncMissingFromNormalStages,
     loadSlotsFromStorage,
     saveSlotsToStorage,
     drawEditorOverlay
