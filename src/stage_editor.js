@@ -37,7 +37,7 @@
   const MAX_ENEMIES = null;
 
   const EDITOR_TOOLS = [
-    { id: "erase", label: "床 (消す)", group: "terrain", kind: "erase", desc: "穴を埋めて床に戻し、置いたモノ・親方・敵を消します" },
+    { id: "erase", label: "床 (消す)", group: "terrain", kind: "erase", desc: "穴を埋めて床に戻し、置いたモノ・敵を消します" },
     { id: "wall1", label: "1回壁(木箱)", group: "wall", kind: "tile", tile: TILE.WALL_1, desc: "1回叩くと壊れる壁（クリア対象）" },
     { id: "wall2", label: "2回壁(銀)", group: "wall", kind: "tile", tile: TILE.WALL_2, desc: "2回叩くと壊れる壁（クリア対象）" },
     { id: "wall3", label: "3回壁(黒)", group: "wall", kind: "tile", tile: TILE.WALL_3, desc: "3回叩くと壊れる壁（クリア対象）" },
@@ -51,7 +51,7 @@
     { id: "door", label: "自動ドア", group: "wall", kind: "tile", tile: TILE.DOOR, desc: "叩くと開く（敵が裏側へ出入り）" },
     { id: "pillar", label: "鉄柱", group: "wall", kind: "tile", tile: TILE.PILLAR, desc: "叩くと真上1マス分が落下（縦2連続は不可）" },
     { id: "mario", label: "主人公", group: "actor", kind: "actor", desc: "主人公の開始位置（再タップで向き反転）" },
-    { id: "spike", label: "親方ロボ", group: "actor", kind: "actor", desc: "親方を配置（再タップで向き反転 / 床で消去）" },
+    { id: "spike", label: "親方ロボ", group: "actor", kind: "actor", desc: "裏側から壁も叩いて追う敵（最大1体・再タップで向き反転）" },
     { id: "spanagon", label: "黄ロボ", group: "actor", kind: "enemy", enemyType: "spanagon", desc: "主人公を追う標準ロボ（再タップで向き反転）" },
     { id: "spanagonFast", label: "赤高速ロボ", group: "actor", kind: "enemy", enemyType: "spanagonFast", desc: "少し速く追う危険ロボ（再タップで向き反転）" },
     { id: "eggplant", label: "緑四つ足", group: "actor", kind: "enemy", enemyType: "eggplant", desc: "高速直進・ハシゴ好きロボ（再タップで向き反転）" }
@@ -103,7 +103,7 @@
       tiles: [],
       timedBombs: [],
       mario: { row: r - 1, col: Math.min(4, c - 3), dir: RIGHT },
-      spike: { row: 1, col: Math.max(2, c - 5), dir: LEFT },
+      spike: null,
       enemies: [],
       fireballMode: "normal"
     };
@@ -135,8 +135,7 @@
     return row + "," + col;
   }
 
-  function hasActorAt(data, row, col) {
-    if (data.mario.row === row && data.mario.col === col) return true;
+  function hasMobAt(data, row, col) {
     if (data.spike && data.spike.row === row && data.spike.col === col) return true;
     for (let i = 0; i < data.enemies.length; i++) {
       if (data.enemies[i].row === row && data.enemies[i].col === col) return true;
@@ -144,15 +143,15 @@
     return false;
   }
 
-  function findNearestFreeCell(data, startRow, startCol, drumSet, occupiedSet) {
+  function findNearestFreeCell(data, startRow, startCol, tileSet, actorSet) {
     let best = null;
     let bestDist = Infinity;
     for (let r = 0; r < data.rows; r++) {
       for (let c = 0; c < data.cols; c++) {
         if (isEdgeSafeCol(c, data.cols)) continue;
         const k = keyOf(r, c);
-        if (drumSet && drumSet.has(k)) continue;
-        if (occupiedSet && occupiedSet.has(k)) continue;
+        if (tileSet && tileSet.has(k)) continue;
+        if (actorSet && actorSet.has(k)) continue;
         const dist = Math.abs(r - startRow) * 2 + Math.abs(c - startCol);
         if (dist < bestDist) {
           bestDist = dist;
@@ -217,12 +216,10 @@
     const sortedTiles = Array.from(tileMap.values()).sort((a, b) => (a.row - b.row) || (a.col - b.col));
     base.tiles = sortedTiles;
     base.timedBombs = [];
-    const drumSet = new Set();
+    const occupiedTiles = new Set();
     for (let i = 0; i < sortedTiles.length; i++) {
       const cell = sortedTiles[i];
-      if (cell.tile === TILE.DRUM) {
-        drumSet.add(keyOf(cell.row, cell.col));
-      }
+      occupiedTiles.add(keyOf(cell.row, cell.col));
       if (cell.tile === TILE.TIMED_BOMB) {
         const k = keyOf(cell.row, cell.col);
         base.timedBombs.push({
@@ -249,30 +246,39 @@
       return { row: r, col: c, dir: normalizeDir(src.dir != null ? src.dir : src.facing, fallbackDir) };
     }
 
+    const occupiedActors = new Set();
+
     base.mario = parseActorPos(raw.mario, base.mario, RIGHT);
-    if (isEdgeSafeCol(base.mario.col, cols) || drumSet.has(keyOf(base.mario.row, base.mario.col))) {
-      const free = findNearestFreeCell(base, base.mario.row, base.mario.col, drumSet, null);
+    if (isEdgeSafeCol(base.mario.col, cols) || occupiedTiles.has(keyOf(base.mario.row, base.mario.col))) {
+      const free = findNearestFreeCell(base, base.mario.row, base.mario.col, occupiedTiles, occupiedActors);
       if (free) {
         base.mario.row = free.row;
         base.mario.col = free.col;
       }
     }
+    occupiedActors.add(keyOf(base.mario.row, base.mario.col));
 
-    if (raw.spike === null || raw.spike === false || raw.hasSpike === false) {
+    if (!raw.spike || raw.spike === false || raw.hasSpike === false) {
       base.spike = null;
     } else {
-      base.spike = parseActorPos(raw.spike, base.spike, LEFT);
-      if (isEdgeSafeCol(base.spike.col, cols) || drumSet.has(keyOf(base.spike.row, base.spike.col))) {
-        const free = findNearestFreeCell(base, base.spike.row, base.spike.col, drumSet, null);
+      const spFallback = { row: 1, col: Math.max(2, cols - 5) };
+      base.spike = parseActorPos(raw.spike, spFallback, LEFT);
+      const spKey = keyOf(base.spike.row, base.spike.col);
+      if (isEdgeSafeCol(base.spike.col, cols) || occupiedTiles.has(spKey) || occupiedActors.has(spKey)) {
+        const free = findNearestFreeCell(base, base.spike.row, base.spike.col, occupiedTiles, occupiedActors);
         if (free) {
           base.spike.row = free.row;
           base.spike.col = free.col;
+          occupiedActors.add(keyOf(base.spike.row, base.spike.col));
+        } else {
+          base.spike = null;
         }
+      } else {
+        occupiedActors.add(spKey);
       }
     }
 
     const enemyList = [];
-    const seenEnemy = new Set();
     if (Array.isArray(raw.enemies)) {
       for (let i = 0; i < raw.enemies.length; i++) {
         const e = raw.enemies[i];
@@ -280,13 +286,13 @@
         const type = (e.enemyType === "spanagonFast" || e.enemyType === "eggplant") ? e.enemyType : "spanagon";
         const pos = parseActorPos(e, { row: rows - 1, col: Math.min(cols - 3, 8) }, LEFT);
         const k = keyOf(pos.row, pos.col);
-        if (isEdgeSafeCol(pos.col, cols) || drumSet.has(k) || seenEnemy.has(k)) {
-          const free = findNearestFreeCell(base, pos.row, pos.col, drumSet, seenEnemy);
+        if (isEdgeSafeCol(pos.col, cols) || occupiedTiles.has(k) || occupiedActors.has(k)) {
+          const free = findNearestFreeCell(base, pos.row, pos.col, occupiedTiles, occupiedActors);
           if (!free) continue;
           pos.row = free.row;
           pos.col = free.col;
         }
-        seenEnemy.add(keyOf(pos.row, pos.col));
+        occupiedActors.add(keyOf(pos.row, pos.col));
         enemyList.push({
           enemyType: type,
           row: pos.row,
@@ -318,6 +324,15 @@
     return normalizeStageData(copy);
   }
 
+  function clearStageCompletely(data) {
+    data.tiles = [];
+    data.timedBombs = [];
+    data.enemies = [];
+    data.spike = null;
+    data.enabled = true;
+    return data;
+  }
+
   function getTileAt(data, row, col) {
     for (let i = 0; i < data.tiles.length; i++) {
       if (data.tiles[i].row === row && data.tiles[i].col === col) {
@@ -336,7 +351,43 @@
     return 30;
   }
 
-  function setTileAt(data, row, col, tileVal, timedSec = 30) {
+  function removeEnemyAt(data, row, col) {
+    const idx = data.enemies.findIndex(e => e.row === row && e.col === col);
+    if (idx >= 0) {
+      data.enemies.splice(idx, 1);
+      return true;
+    }
+    return false;
+  }
+
+  function removeTileOnlyAt(data, row, col) {
+    let removed = false;
+    const tIdx = data.tiles.findIndex(t => t.row === row && t.col === col);
+    if (tIdx >= 0) {
+      data.tiles.splice(tIdx, 1);
+      removed = true;
+    }
+    const tbIdx = data.timedBombs.findIndex(tb => tb.row === row && tb.col === col);
+    if (tbIdx >= 0) {
+      data.timedBombs.splice(tbIdx, 1);
+      removed = true;
+    }
+    return removed;
+  }
+
+  function removeMobsAt(data, row, col, clearSpike = true, clearEnemy = true) {
+    let removed = false;
+    if (clearSpike && data.spike && data.spike.row === row && data.spike.col === col) {
+      data.spike = null;
+      removed = true;
+    }
+    if (clearEnemy && removeEnemyAt(data, row, col)) {
+      removed = true;
+    }
+    return removed;
+  }
+
+  function setTileAt(data, row, col, tileVal, timedSec = 30, opts = {}) {
     if (row < 0 || row >= data.rows || col < 0 || col >= data.cols) {
       return { ok: false, changed: false, message: "範囲外です" };
     }
@@ -346,11 +397,24 @@
       }
       return { ok: false, changed: false, message: "両端2列は通路専用のため置けません" };
     }
+
+    const isDrag = !!opts.isDrag;
+
+    if (tileVal !== TILE.EMPTY && data.mario.row === row && data.mario.col === col) {
+      return {
+        ok: false,
+        changed: false,
+        message: isDrag ? "" : "主人公がいるマスには置けません"
+      };
+    }
+
+    const mobHere = hasMobAt(data, row, col);
+    if (tileVal !== TILE.EMPTY && mobHere && isDrag) {
+      return { ok: false, changed: false };
+    }
+
     if (tileVal === TILE.HOLE && row >= data.rows - 1) {
       return { ok: false, changed: false, message: "一番下の段には穴を作れません" };
-    }
-    if (tileVal === TILE.DRUM && hasActorAt(data, row, col)) {
-      return { ok: false, changed: false, message: "キャラがいるマスにはドラム缶を置けません" };
     }
     if (tileVal === TILE.PILLAR) {
       const aboveIsPillar = row > 0 && getTileAt(data, row - 1, col) === TILE.PILLAR;
@@ -358,6 +422,11 @@
       if (aboveIsPillar || belowIsPillar) {
         return { ok: false, changed: false, message: "鉄柱は縦に2つ連続して置けません" };
       }
+    }
+
+    let replacedMob = false;
+    if (tileVal !== TILE.EMPTY && mobHere && !isDrag) {
+      replacedMob = removeMobsAt(data, row, col, true, true);
     }
 
     const validSec = normalizeTimedSec(timedSec);
@@ -397,19 +466,15 @@
       changed = true;
     }
 
-    if (changed) {
+    const anyChanged = changed || replacedMob;
+    if (anyChanged) {
       data.enabled = true;
     }
-    return { ok: true, changed };
-  }
-
-  function removeEnemyAt(data, row, col) {
-    const idx = data.enemies.findIndex(e => e.row === row && e.col === col);
-    if (idx >= 0) {
-      data.enemies.splice(idx, 1);
-      return true;
-    }
-    return false;
+    return {
+      ok: true,
+      changed: anyChanged,
+      message: replacedMob ? "前の敵と置き換えました" : undefined
+    };
   }
 
   function applyToolAt(data, toolId, row, col, opts = {}) {
@@ -424,14 +489,16 @@
     const isDrag = !!opts.isDrag;
 
     if (tool.kind === "erase") {
-      const removedEnemy = removeEnemyAt(data, row, col);
-      let removedSpike = false;
-      if (data.spike && data.spike.row === row && data.spike.col === col) {
-        data.spike = null;
-        removedSpike = true;
+      if (data.mario.row === row && data.mario.col === col) {
+        return {
+          ok: false,
+          changed: false,
+          message: isDrag ? "" : "主人公は消せません（別マスへ移動してください）"
+        };
       }
-      const tileRes = setTileAt(data, row, col, TILE.EMPTY, timedSec);
-      const anyChanged = removedEnemy || removedSpike || tileRes.changed;
+      const removedMob = removeMobsAt(data, row, col, true, true);
+      const tileRes = setTileAt(data, row, col, TILE.EMPTY, timedSec, { isDrag });
+      const anyChanged = removedMob || tileRes.changed;
       if (anyChanged) {
         data.enabled = true;
       }
@@ -443,7 +510,7 @@
     }
 
     if (tool.kind === "tile") {
-      return setTileAt(data, row, col, tool.tile, timedSec);
+      return setTileAt(data, row, col, tool.tile, timedSec, { isDrag });
     }
 
     if (isDrag) {
@@ -454,19 +521,24 @@
       return { ok: false, changed: false, message: "両端2列は通路専用のためキャラも置けません" };
     }
 
-    if (getTileAt(data, row, col) === TILE.DRUM) {
-      return { ok: false, changed: false, message: "ドラム缶の上にはキャラを置けません" };
-    }
-
     if (tool.id === "mario") {
       if (data.mario.row === row && data.mario.col === col) {
         data.mario.dir = data.mario.dir === RIGHT ? LEFT : RIGHT;
         data.enabled = true;
         return { ok: true, changed: true, message: "主人公の向きを反転しました" };
       }
+      const hadPrev = removeTileOnlyAt(data, row, col) || removeMobsAt(data, row, col, true, true);
       data.mario = { row, col, dir: normalizeDir(opts.actorDir, RIGHT) };
       data.enabled = true;
-      return { ok: true, changed: true, message: "主人公を配置しました" };
+      return {
+        ok: true,
+        changed: true,
+        message: hadPrev ? "前のモノと置き換えて主人公を配置しました" : "主人公を配置しました"
+      };
+    }
+
+    if (data.mario.row === row && data.mario.col === col) {
+      return { ok: false, changed: false, message: "主人公がいるマスには置けません" };
     }
 
     if (tool.id === "spike") {
@@ -475,9 +547,14 @@
         data.enabled = true;
         return { ok: true, changed: true, message: "親方の向きを反転しました" };
       }
+      const hadPrev = removeTileOnlyAt(data, row, col) || removeMobsAt(data, row, col, false, true);
       data.spike = { row, col, dir: actorDir };
       data.enabled = true;
-      return { ok: true, changed: true, message: "親方を配置しました" };
+      return {
+        ok: true,
+        changed: true,
+        message: hadPrev ? "前のモノと置き換えて親方ロボを配置しました" : "親方ロボを配置しました"
+      };
     }
 
     if (tool.kind === "enemy") {
@@ -493,6 +570,7 @@
         data.enabled = true;
         return { ok: true, changed: true, message: tool.label + "に変更しました" };
       }
+      const hadPrev = removeTileOnlyAt(data, row, col) || removeMobsAt(data, row, col, true, false);
       data.enemies.push({
         enemyType: tool.enemyType,
         row,
@@ -500,7 +578,11 @@
         dir: actorDir
       });
       data.enabled = true;
-      return { ok: true, changed: true, message: tool.label + "を配置しました" };
+      return {
+        ok: true,
+        changed: true,
+        message: hadPrev ? ("前のモノと置き換えて" + tool.label + "を配置しました") : (tool.label + "を配置しました")
+      };
     }
 
     return { ok: false, changed: false };
@@ -684,7 +766,6 @@
       }
     } catch (_) {}
 
-    // stages_XX_YY.js 形式テキスト（"番号": { ... } 行）の読み取り
     const map = {};
     let found = 0;
     const rawLines = trimmed.split(/\r?\n/);
@@ -747,7 +828,9 @@
           if (Array.isArray(parsed)) {
             for (let i = 0; i < Math.min(TOTAL_SLOTS, parsed.length); i++) {
               if (parsed[i]) {
-                slots[i] = normalizeStageData(parsed[i], i);
+                slots[i] = parsed[i].enabled
+                  ? normalizeStageData(parsed[i], i)
+                  : createBlankStage(parsed[i].cols, parsed[i].rows, i);
               }
             }
           }
@@ -789,7 +872,6 @@
     ctx.save();
     ctx.translate(0, 24);
 
-    // 左右端2列の通行専用ゾーン表示
     if (cols > EDGE_SAFE_COLS * 2) {
       const edgeW = EDGE_SAFE_COLS * 16;
       ctx.fillStyle = "rgba(255, 148, 48, 0.10)";
@@ -808,7 +890,6 @@
       ctx.setLineDash([]);
     }
 
-    // 薄いマス目グリッド
     ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -822,7 +903,6 @@
     }
     ctx.stroke();
 
-    // 時限爆弾の秒数ラベル（上の床に重ならない y+23 付近にフチ付きで表示）
     if (data.timedBombs.length > 0) {
       for (let i = 0; i < data.timedBombs.length; i++) {
         const tb = data.timedBombs[i];
@@ -830,7 +910,6 @@
       }
     }
 
-    // キャラの位置＆向きマーカー（上の床 y+0..5 を絶対隠さないよう y+7 以降のみ描画）
     function drawActorBadge(row, col, dir, tag, color) {
       const x = col * 16;
       const y = row * 32;
@@ -856,7 +935,6 @@
     }
     drawActorBadge(data.mario.row, data.mario.col, data.mario.dir, "P", "#68e8ff");
 
-    // 選択中 / ホバー中マスハイライト
     if (state.hoverCell && state.hoverCell.row >= 0 && state.hoverCell.row < rows &&
         state.hoverCell.col >= 0 && state.hoverCell.col < cols) {
       const hx = state.hoverCell.col * 16;
@@ -880,6 +958,7 @@
     cloneStageData,
     normalizeStageData,
     resizeStageData,
+    clearStageCompletely,
     getTileAt,
     getTimedBombSecAt,
     setTileAt,
