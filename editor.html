@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ステージエディタ（お試し3ステージ作成）</title>
+  <title>ステージエディタ（50ステージ作成・管理）</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -59,8 +59,13 @@
       cursor: pointer;
       touch-action: manipulation;
     }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
     button.active { background: #2f6fed; border-color: #6ea0ff; font-weight: bold; }
     button.play-btn { background: #1e8848; border-color: #3dc472; font-weight: bold; }
+    button.export-btn { background: #2659a8; border-color: #5b90ff; font-weight: bold; }
     button.back-btn { background: #b45309; border-color: #f59e0b; font-weight: bold; }
     button.danger-btn { background: #6b242c; border-color: #b84452; }
     .card {
@@ -166,7 +171,7 @@
     }
     textarea#exportArea {
       width: 100%;
-      min-height: 90px;
+      min-height: 92px;
       background: #0d111a;
       color: #dce6f7;
       border: 1px solid #32405c;
@@ -252,7 +257,7 @@
   <div id="editView" class="container">
     <div class="topbar">
       <div class="row-left">
-        <div class="title-pill">ステージエディタ</div>
+        <div class="title-pill">ステージエディタ (50面)</div>
         <a class="link-btn" href="./index.html">← ゲーム画面へ</a>
       </div>
       <div class="row-left">
@@ -263,17 +268,30 @@
 
     <div class="card">
       <div class="row-bar">
-        <div id="slotTabs" class="row-left">
-          <button type="button" class="slot-btn active" data-slot="0">ステージ 1</button>
-          <button type="button" class="slot-btn" data-slot="1">ステージ 2</button>
-          <button type="button" class="slot-btn" data-slot="2">ステージ 3</button>
+        <div class="row-left">
+          <button id="prevSlotBtn" type="button">◀</button>
+          <select id="slotSelect" aria-label="編集ステージ選択"></select>
+          <button id="nextSlotBtn" type="button">▶</button>
+          <span id="progressLabel" style="font-size:0.78rem;color:#9cc2ff;"></span>
         </div>
         <div class="row-left">
           <select id="sampleSelect" aria-label="サンプル読込">
             <option value="">サンプルを読込...</option>
             <option value="__blank__">まっさら初期化</option>
           </select>
-          <button id="clearTilesBtn" class="danger-btn" type="button">モノ全消去</button>
+          <button id="clearTilesBtn" class="danger-btn" type="button">モノだけ消す</button>
+        </div>
+      </div>
+
+      <div class="row-bar">
+        <div class="row-left">
+          <span style="font-size:0.78rem;color:#b8c7e0;">整理:</span>
+          <select id="targetSlotSelect" aria-label="移動先ステージ番号"></select>
+          <button id="copySlotBtn" type="button">へ複製</button>
+          <button id="swapSlotBtn" type="button">と入替</button>
+        </div>
+        <div class="row-left">
+          <button id="resetUnusedBtn" class="danger-btn" type="button">未作成に戻す</button>
         </div>
       </div>
 
@@ -346,15 +364,23 @@
     <div class="card">
       <div class="row-bar">
         <div class="row-left">
-          <button id="exportBundleBtn" type="button">3ステージまとめて出力（お披露目HTML用）</button>
-          <button id="exportSingleBtn" type="button">今の1ステージをJS出力</button>
+          <button id="exportRangeBtn" class="export-btn" type="button">stages_01_10.js を出力</button>
+          <button id="exportSingleJsonBtn" type="button">この1面を出力(1行)</button>
+          <button id="exportSingleJsBtn" type="button">JS書式</button>
         </div>
         <div class="row-left">
           <button id="copyExportBtn" type="button">コピー</button>
           <button id="importBtn" type="button">下の文字から読込</button>
         </div>
       </div>
-      <textarea id="exportArea" placeholder="ここに書き出しデータが出ます（3ステージまとめJSONなどを貼って「下の文字から読込」もできます）"></textarea>
+      <div class="row-bar">
+        <div class="row-left">
+          <span style="font-size:0.76rem;color:#9fb0cc;">GitHub本番ファイルから戻す:</span>
+          <button id="pullOneBtn" type="button">この1面を取込</button>
+          <button id="pullRangeBtn" type="button">この10面を取込</button>
+        </div>
+      </div>
+      <textarea id="exportArea" placeholder="「stages_XX_YY.js を出力」を押すとGitHub貼り替え用の全文が出ます。1行JSONやJSファイル全文を貼って「下の文字から読込」もできます"></textarea>
     </div>
   </div>
 
@@ -405,6 +431,11 @@
   <script src="./src/char_eggplant.js"></script>
   <script src="./src/char_fireball.js"></script>
   <script src="./data/stages.js"></script>
+  <script src="./data/stages_01_10.js"></script>
+  <script src="./data/stages_11_20.js"></script>
+  <script src="./data/stages_21_30.js"></script>
+  <script src="./data/stages_31_40.js"></script>
+  <script src="./data/stages_41_50.js"></script>
   <script src="./src/stage_editor.js"></script>
   <script>
     (function () {
@@ -412,6 +443,7 @@
       const { Renderer } = window.WreckRender;
       const { STAGES } = window.WreckStages;
       const E = window.WreckEditor;
+      const TOTAL_SLOTS = E.TOTAL_SLOTS || 50;
 
       const SWATCH_COLORS = {
         erase: "#326ee0",
@@ -443,7 +475,15 @@
       const editRenderer = new Renderer(editCanvas, { viewHeight: 304 });
       const playRenderer = new Renderer(playCanvas, { viewHeight: 240 });
 
-      const slotTabs = document.getElementById("slotTabs");
+      const prevSlotBtn = document.getElementById("prevSlotBtn");
+      const slotSelect = document.getElementById("slotSelect");
+      const nextSlotBtn = document.getElementById("nextSlotBtn");
+      const progressLabel = document.getElementById("progressLabel");
+      const targetSlotSelect = document.getElementById("targetSlotSelect");
+      const copySlotBtn = document.getElementById("copySlotBtn");
+      const swapSlotBtn = document.getElementById("swapSlotBtn");
+      const resetUnusedBtn = document.getElementById("resetUnusedBtn");
+
       const sampleSelect = document.getElementById("sampleSelect");
       const colsSelect = document.getElementById("colsSelect");
       const rowsSelect = document.getElementById("rowsSelect");
@@ -460,10 +500,13 @@
       const undoBtn = document.getElementById("undoBtn");
       const clearTilesBtn = document.getElementById("clearTilesBtn");
       const startPlayBtn = document.getElementById("startPlayBtn");
-      const exportBundleBtn = document.getElementById("exportBundleBtn");
-      const exportSingleBtn = document.getElementById("exportSingleBtn");
+      const exportRangeBtn = document.getElementById("exportRangeBtn");
+      const exportSingleJsonBtn = document.getElementById("exportSingleJsonBtn");
+      const exportSingleJsBtn = document.getElementById("exportSingleJsBtn");
       const copyExportBtn = document.getElementById("copyExportBtn");
       const importBtn = document.getElementById("importBtn");
+      const pullOneBtn = document.getElementById("pullOneBtn");
+      const pullRangeBtn = document.getElementById("pullRangeBtn");
 
       const playTitle = document.getElementById("playTitle");
       const playIntroChk = document.getElementById("playIntroChk");
@@ -480,9 +523,9 @@
       let timedBombSec = 30;
       let actorDir = LEFT;
       let hoverCell = null;
-      let mode = "edit"; // "edit" | "play"
+      let mode = "edit";
 
-      const undoStacks = [[], [], []];
+      const undoStacks = Array.from({ length: TOTAL_SLOTS }, () => []);
       let msgTimer = null;
 
       function currentData() {
@@ -493,27 +536,39 @@
         statusMsg.textContent = msg || "";
         if (msgTimer) clearTimeout(msgTimer);
         if (msg) {
-          msgTimer = setTimeout(() => { statusMsg.textContent = ""; }, 2600);
+          msgTimer = setTimeout(() => { statusMsg.textContent = ""; }, 3200);
         }
       }
 
-      function pushUndo(snapshot) {
-        const st = undoStacks[currentSlot];
-        st.push(snapshot || E.cloneStageData(currentData()));
+      function pushUndo(snapshot, targetIdx = currentSlot) {
+        const st = undoStacks[targetIdx];
+        if (!st) return;
+        st.push(snapshot || E.cloneStageData(slots[targetIdx]));
         if (st.length > 35) st.shift();
-        undoBtn.disabled = st.length === 0;
+        if (targetIdx === currentSlot) {
+          undoBtn.disabled = st.length === 0;
+        }
       }
 
       function saveSlots() {
         E.saveSlotsToStorage(slots);
       }
 
+      // 移動先・コピー先の選択肢初期化
+      for (let i = 0; i < TOTAL_SLOTS; i++) {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = "STAGE " + (i + 1);
+        targetSlotSelect.appendChild(opt);
+      }
+      targetSlotSelect.value = "1";
+
       // サンプル選択肢の構築
       Object.keys(STAGES).forEach((key, idx) => {
         const cfg = STAGES[key];
         const opt = document.createElement("option");
         opt.value = key;
-        opt.textContent = "STAGE " + (cfg.stageNumber || (idx + 1)) + " (" + key + ")";
+        opt.textContent = "サンプル" + (cfg.stageNumber || (idx + 1)) + " (" + key + ")";
         sampleSelect.appendChild(opt);
       });
 
@@ -547,20 +602,57 @@
         actorDirOpts.classList.toggle("hidden", !isActorTool);
       }
 
+      function refreshSlotOptions() {
+        let enabledCount = 0;
+        const prevTarget = targetSlotSelect.value;
+        slotSelect.innerHTML = "";
+        targetSlotSelect.innerHTML = "";
+
+        for (let i = 0; i < TOTAL_SLOTS; i++) {
+          const s = slots[i];
+          const num = i + 1;
+          let label = "STAGE " + num;
+          if (s && s.enabled) {
+            enabledCount += 1;
+            const tg = E.countClearTargets(s);
+            label += " ★(壁" + tg + "/敵" + s.enemies.length + ")";
+          } else {
+            label += " (未作成)";
+          }
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = label;
+          slotSelect.appendChild(opt);
+
+          const topt = document.createElement("option");
+          topt.value = String(i);
+          topt.textContent = "STAGE " + num + (s && s.enabled ? " ★" : "");
+          targetSlotSelect.appendChild(topt);
+        }
+
+        slotSelect.value = String(currentSlot);
+        if (prevTarget !== "" && Number(prevTarget) >= 0 && Number(prevTarget) < TOTAL_SLOTS) {
+          targetSlotSelect.value = prevTarget;
+        }
+        progressLabel.textContent = "作成済: " + enabledCount + "/" + TOTAL_SLOTS;
+      }
+
       function refreshUIControls() {
         const data = currentData();
+        refreshSlotOptions();
+
         colsSelect.value = String(data.cols);
         rowsSelect.value = String(data.rows);
         fireballSelect.value = data.fireballMode || "normal";
-
-        Array.from(slotTabs.querySelectorAll(".slot-btn")).forEach((b, idx) => {
-          b.classList.toggle("active", idx === currentSlot);
-        });
         undoBtn.disabled = undoStacks[currentSlot].length === 0;
+
+        const range = E.getRangeForSlot(currentSlot);
+        exportRangeBtn.textContent = range.shortName + " を出力";
 
         const targets = E.countClearTargets(data);
         const targetWarn = targets === 0 ? "（0個だと即クリア）" : "";
-        stageSummary.textContent = "壊す対象: " + targets + "個" + targetWarn + " / 敵: " + data.enemies.length + "体";
+        const stateTag = data.enabled ? "作成済" : "未作成";
+        stageSummary.textContent = stateTag + " | 壊す対象: " + targets + "個" + targetWarn + " / 敵: " + data.enemies.length + "体";
 
         // 配置中の親方・ザコ敵チップ更新
         actorChips.innerHTML = "";
@@ -576,6 +668,7 @@
           spDir.addEventListener("click", () => {
             pushUndo();
             data.spike.dir = data.spike.dir === LEFT ? RIGHT : LEFT;
+            data.enabled = true;
             saveSlots();
             refreshAllEdit();
           });
@@ -587,6 +680,7 @@
           spDel.addEventListener("click", () => {
             pushUndo();
             data.spike = null;
+            data.enabled = true;
             saveSlots();
             showStatus("親方を消しました");
             refreshAllEdit();
@@ -615,6 +709,7 @@
           dirBtn.addEventListener("click", () => {
             pushUndo();
             e.dir = e.dir === LEFT ? RIGHT : LEFT;
+            data.enabled = true;
             saveSlots();
             refreshAllEdit();
           });
@@ -626,6 +721,7 @@
           delBtn.addEventListener("click", () => {
             pushUndo();
             data.enemies.splice(idx, 1);
+            data.enabled = true;
             saveSlots();
             refreshAllEdit();
           });
@@ -650,6 +746,13 @@
       function refreshAllEdit() {
         refreshUIControls();
         renderEditCanvas();
+      }
+
+      function switchSlot(nextIdx) {
+        currentSlot = ((nextIdx % TOTAL_SLOTS) + TOTAL_SLOTS) % TOTAL_SLOTS;
+        hoverCell = null;
+        showStatus("STAGE " + (currentSlot + 1) + " を開きました");
+        refreshAllEdit();
       }
 
       // キャンバス座標 → マス座標変換
@@ -742,14 +845,60 @@
         if (!isPainting) renderEditCanvas();
       });
 
-      // スロット切替
-      Array.from(slotTabs.querySelectorAll(".slot-btn")).forEach(btn => {
-        btn.addEventListener("click", () => {
-          currentSlot = Number(btn.dataset.slot) || 0;
-          hoverCell = null;
-          showStatus("ステージ " + (currentSlot + 1) + " を開きました");
-          refreshAllEdit();
-        });
+      // スロット切替・整理操作
+      slotSelect.addEventListener("change", () => {
+        switchSlot(Number(slotSelect.value) || 0);
+      });
+      prevSlotBtn.addEventListener("click", () => {
+        switchSlot(currentSlot - 1);
+      });
+      nextSlotBtn.addEventListener("click", () => {
+        switchSlot(currentSlot + 1);
+      });
+
+      copySlotBtn.addEventListener("click", () => {
+        const dstIdx = Number(targetSlotSelect.value);
+        if (!Number.isFinite(dstIdx) || dstIdx === currentSlot) {
+          showStatus("複製先に今と違う番号を選んでください");
+          return;
+        }
+        pushUndo(null, dstIdx);
+        const copied = E.cloneStageData(currentData());
+        copied.name = "STAGE " + (dstIdx + 1);
+        copied.enabled = true;
+        slots[dstIdx] = copied;
+        saveSlots();
+        currentSlot = dstIdx;
+        showStatus("STAGE " + (dstIdx + 1) + " へ複製しました");
+        refreshAllEdit();
+      });
+
+      swapSlotBtn.addEventListener("click", () => {
+        const dstIdx = Number(targetSlotSelect.value);
+        if (!Number.isFinite(dstIdx) || dstIdx === currentSlot) {
+          showStatus("入替先に今と違う番号を選んでください");
+          return;
+        }
+        pushUndo(null, currentSlot);
+        pushUndo(null, dstIdx);
+        const tmp = slots[currentSlot];
+        slots[currentSlot] = slots[dstIdx];
+        slots[dstIdx] = tmp;
+        slots[currentSlot].name = "STAGE " + (currentSlot + 1);
+        slots[dstIdx].name = "STAGE " + (dstIdx + 1);
+        saveSlots();
+        const fromNum = currentSlot + 1;
+        currentSlot = dstIdx;
+        showStatus("STAGE " + fromNum + " と STAGE " + (dstIdx + 1) + " を入れ替えました");
+        refreshAllEdit();
+      });
+
+      resetUnusedBtn.addEventListener("click", () => {
+        pushUndo();
+        slots[currentSlot] = E.createBlankStage(20, 8, currentSlot);
+        saveSlots();
+        showStatus("STAGE " + (currentSlot + 1) + " を未作成状態に戻しました");
+        refreshAllEdit();
       });
 
       // Undo
@@ -778,20 +927,25 @@
       fireballSelect.addEventListener("change", () => {
         pushUndo();
         currentData().fireballMode = fireballSelect.value;
+        currentData().enabled = true;
         saveSlots();
         refreshAllEdit();
       });
 
-      // サンプル読込 / 初期化
+      // サンプル読込 / モノ消去
       sampleSelect.addEventListener("change", () => {
         const val = sampleSelect.value;
         if (!val) return;
         pushUndo();
         if (val === "__blank__") {
-          slots[currentSlot] = E.createBlankStage(currentData().cols, currentData().rows, currentSlot);
+          const blank = E.createBlankStage(currentData().cols, currentData().rows, currentSlot);
+          blank.enabled = true;
+          slots[currentSlot] = blank;
           showStatus("ステージをまっさらに初期化しました");
         } else if (STAGES[val]) {
-          slots[currentSlot] = E.normalizeStageData(STAGES[val], currentSlot);
+          const norm = E.normalizeStageData(STAGES[val], currentSlot);
+          norm.enabled = true;
+          slots[currentSlot] = norm;
           showStatus("サンプル「" + val + "」を読み込みました");
         }
         sampleSelect.value = "";
@@ -804,6 +958,7 @@
         currentData().tiles = [];
         currentData().timedBombs = [];
         currentData().enemies = [];
+        currentData().enabled = true;
         saveSlots();
         showStatus("壁・ギミック・敵をすべて消去しました");
         refreshAllEdit();
@@ -829,20 +984,30 @@
       });
 
       // 書き出し・読み込み
-      exportBundleBtn.addEventListener("click", () => {
-        exportArea.value = E.exportThreeStagesBundle(slots);
-        showStatus("3ステージまとめデータを出力しました");
+      exportRangeBtn.addEventListener("click", () => {
+        const range = E.getRangeForSlot(currentSlot);
+        exportArea.value = E.exportRangeFileJS(slots, range.startNum, range.endNum);
+        let cnt = 0;
+        for (let num = range.startNum; num <= range.endNum; num++) {
+          if (slots[num - 1] && slots[num - 1].enabled) cnt += 1;
+        }
+        showStatus(range.fileName + " 用コードを出力（作成済 " + cnt + "面）。コピーしてGitHubへ貼り替えてください");
       });
 
-      exportSingleBtn.addEventListener("click", () => {
-        exportArea.value = E.formatSingleStageJS(currentData(), currentSlot + 1, "customStage" + (currentSlot + 1));
-        showStatus("現在のステージをJS形式で出力しました");
+      exportSingleJsonBtn.addEventListener("click", () => {
+        exportArea.value = E.exportSingleStageJSON(currentData(), currentSlot + 1);
+        showStatus("STAGE " + (currentSlot + 1) + " を1行データで出力しました");
+      });
+
+      exportSingleJsBtn.addEventListener("click", () => {
+        exportArea.value = E.formatSingleStageJS(currentData(), currentSlot + 1, "stage" + (currentSlot + 1));
+        showStatus("STAGE " + (currentSlot + 1) + " をJS書式で出力しました");
       });
 
       copyExportBtn.addEventListener("click", () => {
-        const text = exportArea.value.trim();
-        if (!text) {
-          exportArea.value = E.exportThreeStagesBundle(slots);
+        if (!exportArea.value.trim()) {
+          const range = E.getRangeForSlot(currentSlot);
+          exportArea.value = E.exportRangeFileJS(slots, range.startNum, range.endNum);
         }
         const val = exportArea.value;
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -870,26 +1035,85 @@
           showStatus("下の枠にデータを貼り付けてください");
           return;
         }
-        try {
-          const parsed = JSON.parse(text);
-          if (parsed && (parsed.demo1 || parsed.demo2 || parsed.demo3)) {
-            pushUndo();
-            if (parsed.demo1) slots[0] = E.normalizeStageData(parsed.demo1, 0);
-            if (parsed.demo2) slots[1] = E.normalizeStageData(parsed.demo2, 1);
-            if (parsed.demo3) slots[2] = E.normalizeStageData(parsed.demo3, 2);
-            saveSlots();
-            showStatus("3ステージまとめデータを読み込みました");
-            refreshAllEdit();
-          } else if (parsed && typeof parsed === "object") {
-            pushUndo();
-            slots[currentSlot] = E.normalizeStageData(parsed, currentSlot);
-            saveSlots();
-            showStatus("現在のスロットへ読み込みました");
-            refreshAllEdit();
-          }
-        } catch (_) {
-          showStatus("読込失敗：JSON形式のテキストを貼り付けてください");
+        const parsed = E.parseImportText(text);
+        if (!parsed) {
+          showStatus("読込失敗：1行JSON または stages_XX_YY.js の内容を貼ってください");
+          return;
         }
+        if (parsed.kind === "bundle3") {
+          if (parsed.obj.demo1) { pushUndo(null, 0); slots[0] = E.normalizeStageData(parsed.obj.demo1, 0); slots[0].enabled = true; }
+          if (parsed.obj.demo2) { pushUndo(null, 1); slots[1] = E.normalizeStageData(parsed.obj.demo2, 1); slots[1].enabled = true; }
+          if (parsed.obj.demo3) { pushUndo(null, 2); slots[2] = E.normalizeStageData(parsed.obj.demo3, 2); slots[2].enabled = true; }
+          saveSlots();
+          showStatus("3ステージデータを1〜3番へ読み込みました");
+          refreshAllEdit();
+          return;
+        }
+        if (parsed.kind === "numberedMap") {
+          let loaded = 0;
+          let firstIdx = -1;
+          Object.keys(parsed.map).forEach(k => {
+            const num = Number(k);
+            if (!Number.isFinite(num) || num < 1 || num > TOTAL_SLOTS) return;
+            const idx = num - 1;
+            pushUndo(null, idx);
+            const norm = E.normalizeStageData(parsed.map[k], idx);
+            norm.enabled = true;
+            slots[idx] = norm;
+            if (firstIdx < 0) firstIdx = idx;
+            loaded += 1;
+          });
+          if (loaded === 0) {
+            showStatus("1〜50番のステージが見つかりませんでした");
+            return;
+          }
+          if (firstIdx >= 0) currentSlot = firstIdx;
+          saveSlots();
+          showStatus(loaded + "ステージ分を読み込みました");
+          refreshAllEdit();
+          return;
+        }
+        if (parsed.kind === "single") {
+          pushUndo();
+          const norm = E.normalizeStageData(parsed.item, currentSlot);
+          norm.enabled = true;
+          slots[currentSlot] = norm;
+          saveSlots();
+          showStatus("STAGE " + (currentSlot + 1) + " へ読み込みました");
+          refreshAllEdit();
+        }
+      });
+
+      pullOneBtn.addEventListener("click", () => {
+        const snapshot = E.cloneStageData(currentData());
+        if (!E.loadFromNormalStage(slots, currentSlot)) {
+          showStatus("GitHub本番ファイルに STAGE " + (currentSlot + 1) + " はまだ入っていません");
+          return;
+        }
+        pushUndo(snapshot);
+        saveSlots();
+        showStatus("本番ファイルから STAGE " + (currentSlot + 1) + " を取り込みました");
+        refreshAllEdit();
+      });
+
+      pullRangeBtn.addEventListener("click", () => {
+        const range = E.getRangeForSlot(currentSlot);
+        let count = 0;
+        for (let num = range.startNum; num <= range.endNum; num++) {
+          const idx = num - 1;
+          const snap = E.cloneStageData(slots[idx]);
+          if (E.loadFromNormalStage(slots, idx)) {
+            pushUndo(snap, idx);
+            count += 1;
+          }
+        }
+        if (count === 0) {
+          showStatus(range.shortName + " にまだ登録されたステージがありません");
+          return;
+        }
+        saveSlots();
+        showStatus(range.shortName + " から " + count + "面を取り込みました");
+        refreshAllEdit();
       });
 
       // ================= テストプレイ制御 =================
@@ -915,7 +1139,7 @@
         playWorld = new GameWorld(cfg);
         playWorld.mario.prevHammer = (currentBits() & HAMMER) !== 0;
         playRenderer.resetCamera(playWorld);
-        playTitle.textContent = "テストプレイ（ステージ " + (currentSlot + 1) + "）";
+        playTitle.textContent = "テストプレイ（STAGE " + (currentSlot + 1) + "）";
         playRenderer.draw(playWorld);
         updatePlayStatus();
       }
